@@ -1,0 +1,31 @@
+# Django Core
+django==5.1.5
+djangorestframework==3.15.2
+django-cors-headers==4.6.0
+
+# Database
+psycopg2-binary==2.9.10
+
+# Async Tasks
+celery==5.4.0
+redis==5.2.1
+
+# Auth - Clerk JWT validation
+PyJWT==2.10.1
+cryptography==44.0.0
+requests==2.32.3
+
+# AI
+google-generativeai==0.8.4
+
+# Email
+sendgrid==6.11.0
+
+# PDF Generation
+weasyprint==63.1
+
+# Environment Variables
+python-decouple==3.8
+
+# Utilities
+django-filter==24.3
