@@ -1,0 +1,133 @@
+// Auditoría Web Automatizada para PYMES
+// Formato DBML para dbdiagram.io
+
+Table accounts_organization {
+  id INTEGER [pk, increment]
+  name VARCHAR(200) [not null]
+  plan VARCHAR(20) [not null, default: 'free', note: 'free | pro']
+  url_limit INTEGER [not null, default: 5]
+  created_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table accounts_user {
+  id INTEGER [pk, increment]
+  password VARCHAR(128) [not null]
+  last_login DATETIME [null]
+  is_superuser BOOLEAN [not null, default: 0]
+  username VARCHAR(150) [not null, unique]
+  first_name VARCHAR(150) [not null, default: '']
+  last_name VARCHAR(150) [not null, default: '']
+  email VARCHAR(254) [not null, default: '']
+  is_staff BOOLEAN [not null, default: 0]
+  is_active BOOLEAN [not null, default: 1]
+  date_joined DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+  clerk_user_id VARCHAR(200) [null, unique]
+  organization_id INTEGER [null]
+  role VARCHAR(20) [not null, default: 'user', note: 'user | admin']
+}
+
+Table urls_manager_urlasset {
+  id INTEGER [pk, increment]
+  organization_id INTEGER [not null]
+  url VARCHAR(2048) [not null]
+  last_scan_status VARCHAR(20) [not null, default: 'pending', note: 'pending | ok | warning | error']
+  last_scan_at DATETIME [null]
+  created_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (organization_id, url) [unique]
+  }
+}
+
+Table scanner_scan {
+  id INTEGER [pk, increment]
+  url_asset_id INTEGER [not null]
+  started_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+  finished_at DATETIME [null]
+  status VARCHAR(20) [not null, default: 'pending', note: 'pending | running | completed | error']
+  error TEXT [not null, default: '']
+  engine_version VARCHAR(50) [not null, default: '1.0.0']
+  created_by_id INTEGER [null]
+}
+
+Table scanner_finding {
+  id INTEGER [pk, increment]
+  scan_id INTEGER [not null]
+  title VARCHAR(300) [not null]
+  severity VARCHAR(10) [not null, note: 'HIGH | MEDIUM | LOW | INFO']
+  category VARCHAR(30) [not null, default: 'other', note: 'headers | ssl | cookies | info_disclosure | dns | mixed_content | redirect | other']
+  description TEXT [not null]
+  recommendation TEXT [not null, default: '']
+  evidence TEXT [not null, default: '']
+}
+
+Table reports_executivesummary {
+  id INTEGER [pk, increment]
+  scan_id INTEGER [not null, unique]
+  ai_provider VARCHAR(20) [not null, default: 'gemini', note: 'gemini | openai']
+  content TEXT [not null]
+  token_usage INTEGER [not null, default: 0]
+  created_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table notifications_notificationconfig {
+  id INTEGER [pk, increment]
+  organization_id INTEGER [not null, unique]
+  frequency VARCHAR(20) [not null, default: 'weekly', note: 'daily | weekly | monthly']
+  enabled BOOLEAN [not null, default: 1]
+  last_sent_at DATETIME [null]
+  created_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table notifications_emaillog {
+  id INTEGER [pk, increment]
+  organization_id INTEGER [not null]
+  email_type VARCHAR(20) [not null, note: 'scheduled | alert']
+  sent_at DATETIME [not null, default: `CURRENT_TIMESTAMP`]
+  status VARCHAR(10) [not null, default: 'sent', note: 'sent | failed']
+  error TEXT [not null, default: '']
+  recipients TEXT [not null, default: '']
+}
+
+Table accounts_user_groups {
+  id INTEGER [pk, increment]
+  user_id INTEGER [not null]
+  group_id INTEGER [not null]
+
+  indexes {
+    (user_id, group_id) [unique]
+  }
+}
+
+Table accounts_user_user_permissions {
+  id INTEGER [pk, increment]
+  user_id INTEGER [not null]
+  permission_id INTEGER [not null]
+
+  indexes {
+    (user_id, permission_id) [unique]
+  }
+}
+
+// Relaciones
+
+Ref: accounts_user.organization_id > accounts_organization.id [delete: set null]
+
+Ref: urls_manager_urlasset.organization_id > accounts_organization.id [delete: cascade]
+
+Ref: scanner_scan.url_asset_id > urls_manager_urlasset.id [delete: cascade]
+Ref: scanner_scan.created_by_id > accounts_user.id [delete: set null]
+
+Ref: scanner_finding.scan_id > scanner_scan.id [delete: cascade]
+
+Ref: reports_executivesummary.scan_id - scanner_scan.id [delete: cascade]
+
+Ref: notifications_notificationconfig.organization_id - accounts_organization.id [delete: cascade]
+
+Ref: notifications_emaillog.organization_id > accounts_organization.id [delete: cascade]
+
+Ref: accounts_user_groups.user_id > accounts_user.id [delete: cascade]
+
+Ref: accounts_user_user_permissions.user_id > accounts_user.id [delete: cascade]

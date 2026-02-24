@@ -33,6 +33,22 @@
   }
   body {
     @apply bg-background text-foreground font-['Inter',sans-serif] antialiased;
+    scroll-behavior: smooth;
+  }
+
+  /* Dark select/option styling — prevent jarring white backgrounds */
+  select option {
+    background-color: hsl(222 47% 9%);
+    color: hsl(210 40% 96%);
+  }
+
+  /* Consistent focus rings for all interactive elements */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: 2px solid hsl(217 91% 60%);
+    outline-offset: 2px;
   }
 }
 
@@ -78,6 +94,48 @@
   @keyframes scan-pulse {
     0%, 100% { opacity: 0.4; transform: scale(1); }
     50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  /* Loading skeleton shimmer */
+  .skeleton {
+    @apply bg-white/5 rounded-lg;
+    background: linear-gradient(90deg, hsl(217 33% 14%) 25%, hsl(217 33% 18%) 50%, hsl(217 33% 14%) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Tooltip for collapsed sidebar */
+  .sidebar-tooltip {
+    @apply absolute left-full ml-2 px-2.5 py-1 rounded-md text-xs font-medium;
+    @apply bg-white/10 backdrop-blur-xl border border-white/10 text-foreground;
+    @apply opacity-0 invisible pointer-events-none;
+    @apply transition-all duration-200;
+    white-space: nowrap;
+    z-index: 100;
+  }
+
+  .sidebar-item:hover .sidebar-tooltip {
+    @apply opacity-100 visible;
+  }
+
+  /* Page transition */
+  .page-enter {
+    animation: page-enter 0.4s ease-out;
+  }
+
+  @keyframes page-enter {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Empty state illustration glow */
+  .empty-state-icon {
+    filter: drop-shadow(0 0 20px rgba(42, 136, 255, 0.15));
   }
 
   /* Scrollbar */

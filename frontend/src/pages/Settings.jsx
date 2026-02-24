@@ -42,7 +42,7 @@ export default function Settings() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+        <div className="max-w-3xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                     <SettingsIcon className="w-6 h-6 text-blue-400" />
@@ -67,11 +67,14 @@ export default function Settings() {
                     </div>
                     <button
                         type="button"
+                        role="switch"
+                        aria-checked={config.enabled}
+                        aria-label="Activar reportes periódicos"
                         onClick={() => setConfig({ ...config, enabled: !config.enabled })}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${config.enabled ? 'bg-blue-500' : 'bg-white/20'}`}
+                        className={`w-12 h-6 rounded-full transition-colors duration-200 relative ${config.enabled ? 'bg-blue-500' : 'bg-white/20'}`}
                     >
                         <div
-                            className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all ${config.enabled ? 'left-[26px]' : 'left-0.5'
+                            className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all duration-200 shadow-sm ${config.enabled ? 'left-[26px]' : 'left-0.5'
                                 }`}
                         />
                     </button>
@@ -82,7 +85,8 @@ export default function Settings() {
                     <select
                         value={config.frequency}
                         onChange={(e) => setConfig({ ...config, frequency: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 outline-none text-sm"
+                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm appearance-none cursor-pointer"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                     >
                         <option value="daily">Diario</option>
                         <option value="weekly">Semanal</option>
