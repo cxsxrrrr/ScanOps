@@ -46,7 +46,7 @@ export default function Profile() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <User className="w-6 h-6 text-blue-400" />
+                    <User className="w-6 h-6 text-blue-500" />
                     Perfil
                 </h1>
                 <p className="text-muted-foreground text-sm mt-1">
@@ -62,7 +62,7 @@ export default function Profile() {
                         type="email"
                         value={user?.primaryEmailAddress?.emailAddress || ''}
                         disabled
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-muted-foreground text-sm cursor-not-allowed"
+                        className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-muted-foreground text-sm cursor-not-allowed"
                     />
                 </div>
 
@@ -73,7 +73,7 @@ export default function Profile() {
                             type="text"
                             value={profile.first_name}
                             onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                         />
                     </div>
                     <div>
@@ -82,14 +82,14 @@ export default function Profile() {
                             type="text"
                             value={profile.last_name}
                             onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                         />
                     </div>
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium mb-1.5 flex items-center gap-1.5">
-                        <Building className="w-4 h-4 text-purple-400" />
+                        <Building className="w-4 h-4 text-purple-500" />
                         Organización
                     </label>
                     <input
@@ -97,14 +97,14 @@ export default function Profile() {
                         value={profile.organization_name}
                         onChange={(e) => setProfile({ ...profile, organization_name: e.target.value })}
                         placeholder="Nombre de tu empresa"
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                        className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                     />
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
                     <div>
                         {saved && (
-                            <span className="text-emerald-400 text-sm flex items-center gap-1">
+                            <span className="text-emerald-500 text-sm flex items-center gap-1">
                                 <CheckCircle2 className="w-4 h-4" /> Guardado exitosamente
                             </span>
                         )}

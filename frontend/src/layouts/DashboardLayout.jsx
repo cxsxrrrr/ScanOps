@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
 import { useApiSetup } from '../hooks/useApi'
+import { useTheme } from '../hooks/useTheme'
 import {
     LayoutDashboard,
     Globe,
@@ -12,6 +13,8 @@ import {
     X,
     ChevronLeft,
     User,
+    Sun,
+    Moon,
 } from 'lucide-react'
 
 const navItems = [
@@ -35,14 +38,13 @@ const pageNames = {
 export default function DashboardLayout() {
     useApiSetup()
     const { user } = useUser()
+    const { theme, toggleTheme, isDark } = useTheme()
     const location = useLocation()
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
 
-    // Derive page name from current route
     const currentPageName = pageNames[location.pathname] || 'Reporte'
 
-    // Filter admin-only items (basic check — real role check should come from backend)
     const isAdmin = user?.publicMetadata?.role === 'admin'
     const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin)
 
@@ -63,19 +65,19 @@ export default function DashboardLayout() {
           ${collapsed ? 'w-[72px]' : 'w-64'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           transition-all duration-300 ease-in-out
-          glass border-r border-white/10
+          glass border-r border-gray-200 dark:border-white/10
           flex flex-col
           custom-scrollbar
         `}
             >
                 {/* Logo */}
-                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
                     {!collapsed && (
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg shadow-blue-500/25">
                                 <ShieldCheck className="w-5 h-5 text-white" />
                             </div>
-                            <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            <span className="font-bold text-lg bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
                                 AuditWeb
                             </span>
                         </div>
@@ -89,14 +91,14 @@ export default function DashboardLayout() {
                     )}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                        className="hidden lg:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                         aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
                     >
                         <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
                     </button>
                     <button
                         onClick={() => setMobileOpen(false)}
-                        className="lg:hidden p-1.5 rounded-lg hover:bg-white/10"
+                        className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10"
                         aria-label="Cerrar menú"
                     >
                         <X className="w-4 h-4" />
@@ -115,7 +117,7 @@ export default function DashboardLayout() {
                                 `sidebar-item relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
                 ${isActive
                                     ? 'gradient-primary text-white shadow-lg shadow-blue-500/20'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5'
                                 }
                 ${collapsed ? 'justify-center' : ''}
                 `
@@ -129,12 +131,12 @@ export default function DashboardLayout() {
                 </nav>
 
                 {/* User section */}
-                <div className="p-3 border-t border-white/10">
+                <div className="p-3 border-t border-gray-200 dark:border-white/10">
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
                         <UserButton
                             appearance={{
                                 elements: {
-                                    avatarBox: 'w-9 h-9 ring-2 ring-white/10',
+                                    avatarBox: 'w-9 h-9 ring-2 ring-gray-200 dark:ring-white/10',
                                 },
                             }}
                         />
@@ -155,11 +157,11 @@ export default function DashboardLayout() {
             {/* Main content */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 {/* Top bar */}
-                <header className="h-16 flex items-center justify-between px-6 border-b border-white/10 glass">
+                <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-white/10 glass">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setMobileOpen(true)}
-                            className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                             aria-label="Abrir menú"
                         >
                             <Menu className="w-5 h-5" />
@@ -168,11 +170,25 @@ export default function DashboardLayout() {
                             {currentPageName}
                         </h2>
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="hidden sm:inline">Sistema activo</span>
-                        <span className="text-white/20">•</span>
-                        <span>v1.0</span>
+                    <div className="flex items-center gap-3">
+                        {/* Theme toggle */}
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-200"
+                            aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                        >
+                            {isDark ? (
+                                <Sun className="w-4 h-4 text-amber-400" />
+                            ) : (
+                                <Moon className="w-4 h-4 text-slate-600" />
+                            )}
+                        </button>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="hidden sm:inline">Sistema activo</span>
+                            <span className="text-gray-300 dark:text-white/20">•</span>
+                            <span>v1.0</span>
+                        </div>
                     </div>
                 </header>
 

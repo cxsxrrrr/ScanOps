@@ -18,10 +18,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             appearance={{
                 variables: {
                     colorPrimary: '#2a88ff',
-                    colorBackground: '#0f172a',
-                    colorText: '#e2e8f0',
-                    colorInputBackground: '#1e293b',
-                    colorInputText: '#e2e8f0',
                     borderRadius: '0.75rem',
                 },
                 elements: {

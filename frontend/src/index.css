@@ -3,7 +3,33 @@
 @tailwind utilities;
 
 @layer base {
+
+  /* ─── LIGHT MODE (default) ─── */
   :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+  }
+
+  /* ─── DARK MODE ─── */
+  .dark {
     --background: 222 47% 6%;
     --foreground: 210 40% 96%;
     --card: 222 47% 9%;
@@ -23,7 +49,6 @@
     --border: 217 33% 17%;
     --input: 217 33% 17%;
     --ring: 217 91% 60%;
-    --radius: 0.75rem;
   }
 }
 
@@ -31,13 +56,15 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground font-['Inter',sans-serif] antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
     scroll-behavior: smooth;
   }
 
-  /* Dark select/option styling — prevent jarring white backgrounds */
-  select option {
+  /* Dark select/option styling */
+  .dark select option {
     background-color: hsl(222 47% 9%);
     color: hsl(210 40% 96%);
   }
@@ -55,18 +82,36 @@
 /* Glassmorphism utilities */
 @layer utilities {
   .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    @apply bg-white/80 backdrop-blur-xl border border-gray-200;
   }
+
+  .dark .glass {
+    @apply bg-white/5 border-white/10;
+  }
+
   .glass-strong {
-    @apply bg-white/10 backdrop-blur-2xl border border-white/15;
+    @apply bg-white/90 backdrop-blur-2xl border border-gray-200;
+  }
+
+  .dark .glass-strong {
+    @apply bg-white/10 border-white/15;
   }
 
   /* Gradient backgrounds */
   .gradient-primary {
     background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(262 83% 58%) 100%);
   }
+
   .gradient-bg {
-    background: 
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(42, 136, 255, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(124, 58, 237, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.02) 0%, transparent 50%);
+  }
+
+  .dark .gradient-bg {
+    background-image:
       radial-gradient(ellipse at 20% 50%, rgba(42, 136, 255, 0.08) 0%, transparent 50%),
       radial-gradient(ellipse at 80% 20%, rgba(124, 58, 237, 0.06) 0%, transparent 50%),
       radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.04) 0%, transparent 50%);
@@ -74,16 +119,19 @@
 
   /* Severity badges */
   .severity-high {
-    @apply bg-red-500/15 text-red-400 border border-red-500/30;
+    @apply bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30;
   }
+
   .severity-medium {
-    @apply bg-amber-500/15 text-amber-400 border border-amber-500/30;
+    @apply bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30;
   }
+
   .severity-low {
-    @apply bg-blue-500/15 text-blue-400 border border-blue-500/30;
+    @apply bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30;
   }
+
   .severity-info {
-    @apply bg-gray-500/15 text-gray-400 border border-gray-500/30;
+    @apply bg-gray-500/15 text-gray-600 dark:text-gray-400 border border-gray-500/30;
   }
 
   /* Scan animation */
@@ -92,27 +140,46 @@
   }
 
   @keyframes scan-pulse {
-    0%, 100% { opacity: 0.4; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.05); }
+
+    0%,
+    100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
   }
 
   /* Loading skeleton shimmer */
   .skeleton {
-    @apply bg-white/5 rounded-lg;
-    background: linear-gradient(90deg, hsl(217 33% 14%) 25%, hsl(217 33% 18%) 50%, hsl(217 33% 14%) 75%);
+    @apply rounded-lg;
+    background: linear-gradient(90deg, hsl(210 20% 93%) 25%, hsl(210 20% 88%) 50%, hsl(210 20% 93%) 75%);
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.5s ease-in-out infinite;
   }
 
+  .dark .skeleton {
+    background: linear-gradient(90deg, hsl(217 33% 14%) 25%, hsl(217 33% 18%) 50%, hsl(217 33% 14%) 75%);
+    background-size: 200% 100%;
+  }
+
   @keyframes skeleton-shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   /* Tooltip for collapsed sidebar */
   .sidebar-tooltip {
     @apply absolute left-full ml-2 px-2.5 py-1 rounded-md text-xs font-medium;
-    @apply bg-white/10 backdrop-blur-xl border border-white/10 text-foreground;
+    @apply bg-gray-800 text-white dark:bg-white/10 dark:backdrop-blur-xl dark:border dark:border-white/10 dark:text-foreground;
     @apply opacity-0 invisible pointer-events-none;
     @apply transition-all duration-200;
     white-space: nowrap;
@@ -129,8 +196,15 @@
   }
 
   @keyframes page-enter {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /* Empty state illustration glow */
@@ -142,13 +216,62 @@
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full;
+    @apply bg-gray-300 dark:bg-white/10 rounded-full;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-white/20;
+  }
+
+  /* ─── Theme-aware utility overrides ─── */
+  /* Inputs */
+  .theme-input {
+    @apply bg-gray-100 border-gray-200 text-foreground placeholder:text-muted-foreground;
+  }
+
+  .dark .theme-input {
+    @apply bg-white/5 border-white/10;
+  }
+
+  /* Hover surfaces */
+  .theme-hover:hover {
+    @apply bg-gray-100;
+  }
+
+  .dark .theme-hover:hover {
+    @apply bg-white/5;
+  }
+
+  /* Subtle backgrounds */
+  .theme-surface {
+    @apply bg-gray-100;
+  }
+
+  .dark .theme-surface {
+    @apply bg-white/5;
+  }
+
+  /* Dividers */
+  .theme-divide>*+* {
+    @apply border-t border-gray-200;
+  }
+
+  .dark .theme-divide>*+* {
+    @apply border-white/5;
+  }
+
+  /* Toggle switch off-state */
+  .theme-toggle-off {
+    @apply bg-gray-300;
+  }
+
+  .dark .theme-toggle-off {
     @apply bg-white/20;
   }
 }

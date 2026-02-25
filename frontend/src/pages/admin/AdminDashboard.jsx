@@ -31,7 +31,7 @@ export default function AdminDashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             </div>
         )
     }
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <ShieldCheck className="w-6 h-6 text-blue-400" />
+                        <ShieldCheck className="w-6 h-6 text-blue-500" />
                         Panel de Administración
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
                 </div>
                 <button
                     onClick={loadData}
-                    className="p-2 rounded-lg glass hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-lg glass hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                 >
                     <RefreshCw className="w-4 h-4" />
                 </button>
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
                 <h2 className="text-lg font-semibold mb-4">Estado de Escaneos</h2>
                 <div className="flex gap-4">
                     {Object.entries(metrics.scans.by_status).map(([status, count]) => (
-                        <div key={status} className="flex-1 text-center p-3 rounded-lg bg-white/5">
+                        <div key={status} className="flex-1 text-center p-3 rounded-lg bg-gray-100 dark:bg-white/5">
                             <div className="text-xl font-bold">{count}</div>
                             <div className="text-xs text-muted-foreground capitalize">{status}</div>
                         </div>
@@ -107,7 +107,7 @@ export default function AdminDashboard() {
             {errors && (
                 <div className="glass rounded-xl p-6">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <XCircle className="w-5 h-5 text-red-400" />
+                        <XCircle className="w-5 h-5 text-red-500" />
                         Errores Recientes
                     </h2>
                     {errors.scan_errors?.length === 0 && errors.email_errors?.length === 0 ? (
@@ -123,7 +123,7 @@ export default function AdminDashboard() {
                                         <span className="text-xs text-muted-foreground">{new Date(err.started_at).toLocaleString('es-VE')}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">{err.url_asset__url}</p>
-                                    <p className="text-xs text-red-400 mt-1 truncate">{err.error}</p>
+                                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 truncate">{err.error}</p>
                                 </div>
                             ))}
                         </div>

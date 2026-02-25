@@ -31,10 +31,10 @@ export default function ScanHistory() {
 
     const statusIcon = (status) => {
         switch (status) {
-            case 'completed': return <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            case 'running': return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-            case 'error': return <XCircle className="w-4 h-4 text-red-400" />
-            default: return <Clock className="w-4 h-4 text-yellow-400" />
+            case 'completed': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            case 'running': return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            case 'error': return <XCircle className="w-4 h-4 text-red-500" />
+            default: return <Clock className="w-4 h-4 text-yellow-500" />
         }
     }
 
@@ -43,7 +43,7 @@ export default function ScanHistory() {
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <ScanSearch className="w-6 h-6 text-purple-400" />
+                        <ScanSearch className="w-6 h-6 text-purple-500" />
                         Historial de Escaneos
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">
@@ -61,7 +61,7 @@ export default function ScanHistory() {
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
                 ${filter === f
                                     ? 'gradient-primary text-white shadow-md shadow-blue-500/20'
-                                    : 'glass hover:bg-white/10'
+                                    : 'glass hover:bg-gray-100 dark:hover:bg-white/10'
                                 }`}
                         >
                             {f === 'all' ? 'Todos' : getStatusLabel(f)}
@@ -74,7 +74,7 @@ export default function ScanHistory() {
             <div className="glass rounded-xl overflow-hidden">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                        <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
@@ -82,17 +82,17 @@ export default function ScanHistory() {
                         <p className="font-medium">No hay escaneos que mostrar.</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-gray-100 dark:divide-white/5">
                         {filtered.map((scan) => (
                             <Link
                                 key={scan.id}
                                 to={`/scans/${scan.id}/report`}
-                                className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors group"
+                                className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group"
                             >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                     {statusIcon(scan.status)}
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate group-hover:text-blue-400 transition-colors">
+                                        <p className="text-sm font-medium truncate group-hover:text-blue-500 transition-colors">
                                             {scan.url}
                                         </p>
                                         <p className="text-xs text-muted-foreground mt-0.5">

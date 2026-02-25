@@ -45,7 +45,7 @@ export default function Settings() {
         <div className="max-w-3xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <SettingsIcon className="w-6 h-6 text-blue-400" />
+                    <SettingsIcon className="w-6 h-6 text-blue-500" />
                     Configuración
                 </h1>
                 <p className="text-muted-foreground text-sm mt-1">
@@ -56,11 +56,11 @@ export default function Settings() {
             {/* Notification config */}
             <form onSubmit={handleSave} className="glass rounded-xl p-6 space-y-5">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-purple-400" />
+                    <Bell className="w-5 h-5 text-purple-500" />
                     Notificaciones por Email
                 </h2>
 
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-100 dark:bg-white/5">
                     <div>
                         <p className="font-medium">Reportes periódicos</p>
                         <p className="text-sm text-muted-foreground">Recibir resúmenes por correo</p>
@@ -71,7 +71,7 @@ export default function Settings() {
                         aria-checked={config.enabled}
                         aria-label="Activar reportes periódicos"
                         onClick={() => setConfig({ ...config, enabled: !config.enabled })}
-                        className={`w-12 h-6 rounded-full transition-colors duration-200 relative ${config.enabled ? 'bg-blue-500' : 'bg-white/20'}`}
+                        className={`w-12 h-6 rounded-full transition-colors duration-200 relative ${config.enabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-white/20'}`}
                     >
                         <div
                             className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all duration-200 shadow-sm ${config.enabled ? 'left-[26px]' : 'left-0.5'
@@ -85,7 +85,7 @@ export default function Settings() {
                     <select
                         value={config.frequency}
                         onChange={(e) => setConfig({ ...config, frequency: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm appearance-none cursor-pointer"
+                        className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm appearance-none cursor-pointer"
                         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                     >
                         <option value="daily">Diario</option>
@@ -96,7 +96,7 @@ export default function Settings() {
 
                 <div className="flex items-center justify-between pt-2">
                     {saved && (
-                        <span className="text-emerald-400 text-sm flex items-center gap-1">
+                        <span className="text-emerald-500 text-sm flex items-center gap-1">
                             <CheckCircle2 className="w-4 h-4" /> Guardado
                         </span>
                     )}
@@ -115,7 +115,7 @@ export default function Settings() {
             {/* Email logs */}
             <div className="glass rounded-xl p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-emerald-400" />
+                    <Mail className="w-5 h-5 text-emerald-500" />
                     Historial de Correos
                 </h2>
                 {logs.length === 0 ? (
@@ -123,7 +123,7 @@ export default function Settings() {
                         No hay correos enviados aún.
                     </p>
                 ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-gray-100 dark:divide-white/5">
                         {logs.map((log) => (
                             <div key={log.id} className="py-3 flex items-center justify-between">
                                 <div>
@@ -132,7 +132,7 @@ export default function Settings() {
                                     </p>
                                     <p className="text-xs text-muted-foreground">{new Date(log.sent_at).toLocaleString('es-VE')}</p>
                                 </div>
-                                <span className={`text-xs font-medium px-2 py-1 rounded ${log.status === 'sent' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                                <span className={`text-xs font-medium px-2 py-1 rounded ${log.status === 'sent' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'
                                     }`}>
                                     {log.status === 'sent' ? 'Enviado' : 'Error'}
                                 </span>

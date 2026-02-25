@@ -1,8 +1,11 @@
 import { SignIn } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
 import { ShieldCheck, ArrowRight } from 'lucide-react'
+import { useTheme } from '../hooks/useTheme'
 
 export default function Login() {
+    const { isDark } = useTheme()
+
     return (
         <div className="min-h-screen flex gradient-bg">
             {/* Left panel — branding */}
@@ -15,7 +18,7 @@ export default function Login() {
                     <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/30">
                         <ShieldCheck className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-4xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                    <h1 className="text-4xl font-extrabold mb-4 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">
                         Auditoría Web Automatizada
                     </h1>
                     <p className="text-lg text-muted-foreground mb-8">
@@ -28,7 +31,7 @@ export default function Login() {
                             { num: '24/7', label: 'Monitoreo continuo' },
                         ].map((stat) => (
                             <div key={stat.label} className="glass rounded-xl p-4">
-                                <div className="text-2xl font-bold text-blue-400">{stat.num}</div>
+                                <div className="text-2xl font-bold text-blue-500">{stat.num}</div>
                                 <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
                             </div>
                         ))}
@@ -42,7 +45,7 @@ export default function Login() {
                     <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4">
                         <ShieldCheck className="w-7 h-7 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
                         AuditWeb
                     </h1>
                 </div>
@@ -62,14 +65,19 @@ export default function Login() {
                                     card: 'bg-transparent shadow-none p-0 w-full',
                                     headerTitle: 'hidden',
                                     headerSubtitle: 'hidden',
-                                    socialButtonsBlockButton: 'glass border-white/20 hover:bg-white/10 text-foreground',
+                                    socialButtonsBlockButton: isDark
+                                        ? 'glass border-white/20 hover:bg-white/10 text-foreground'
+                                        : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 shadow-sm',
                                     formButtonPrimary: 'gradient-primary border-0 hover:opacity-90 transition-opacity',
-                                    formFieldInput: 'bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground',
-                                    formFieldLabel: 'text-foreground',
-                                    dividerLine: 'bg-white/10',
+                                    formFieldInput: isDark
+                                        ? 'bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                                        : 'bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
+                                    formFieldLabel: isDark ? 'text-foreground' : 'text-gray-700 font-medium',
+                                    dividerLine: isDark ? 'bg-white/10' : 'bg-gray-300',
                                     dividerText: 'text-muted-foreground',
-                                    footerActionLink: 'text-blue-400 hover:text-blue-300',
-                                    identityPreviewEditButton: 'text-blue-400',
+                                    footerActionLink: 'text-blue-500 hover:text-blue-400',
+                                    identityPreviewEditButton: 'text-blue-500',
+                                    formFieldInputShowPasswordButton: isDark ? 'text-white/50 hover:text-white/80' : 'text-gray-500 hover:text-gray-700',
                                 },
                             }}
                         />
@@ -77,7 +85,7 @@ export default function Login() {
 
                     <p className="text-center mt-6 text-sm text-muted-foreground">
                         ¿No tienes cuenta?{' '}
-                        <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium inline-flex items-center gap-1">
+                        <Link to="/register" className="text-blue-500 hover:text-blue-400 font-medium inline-flex items-center gap-1">
                             Regístrate <ArrowRight className="w-3 h-3" />
                         </Link>
                     </p>

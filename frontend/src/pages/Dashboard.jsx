@@ -116,7 +116,7 @@ export default function Dashboard() {
             {/* Welcome */}
             <div>
                 <h1 className="text-3xl font-bold">
-                    Hola, <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">{user?.firstName || 'Usuario'}</span> 👋
+                    Hola, <span className="bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">{user?.firstName || 'Usuario'}</span> 👋
                 </h1>
                 <p className="text-muted-foreground mt-1">
                     Aquí tienes un resumen de la seguridad de tus sitios web.
@@ -147,36 +147,36 @@ export default function Dashboard() {
                 {/* Quick actions */}
                 <div className="glass rounded-xl p-6">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-blue-400" />
+                        <Activity className="w-5 h-5 text-blue-500" />
                         Acciones Rápidas
                     </h2>
                     <div className="space-y-3">
                         <Link
                             to="/urls"
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
-                                <Globe className="w-5 h-5 text-blue-400" />
+                                <Globe className="w-5 h-5 text-blue-500" />
                                 <span className="text-sm">Registrar nueva URL</span>
                             </div>
                             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
                         <Link
                             to="/scans"
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
-                                <ScanSearch className="w-5 h-5 text-purple-400" />
+                                <ScanSearch className="w-5 h-5 text-purple-500" />
                                 <span className="text-sm">Ver escaneos</span>
                             </div>
                             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
                         <Link
                             to="/settings"
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
-                                <Shield className="w-5 h-5 text-emerald-400" />
+                                <Shield className="w-5 h-5 text-emerald-500" />
                                 <span className="text-sm">Configurar notificaciones</span>
                             </div>
                             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -187,7 +187,7 @@ export default function Dashboard() {
                 {/* Recent scans */}
                 <div className="lg:col-span-2 glass rounded-xl p-6">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <ScanSearch className="w-5 h-5 text-purple-400" />
+                        <ScanSearch className="w-5 h-5 text-purple-500" />
                         Escaneos Recientes
                     </h2>
                     {recentScans.length === 0 ? (
@@ -202,7 +202,7 @@ export default function Dashboard() {
                                 <Link
                                     key={scan.id}
                                     to={`/scans/${scan.id}/report`}
-                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
+                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className={`w-2 h-2 rounded-full ${getStatusColor(scan.status)} bg-current`} />

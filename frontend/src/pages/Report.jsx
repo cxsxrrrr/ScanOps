@@ -51,7 +51,7 @@ export default function Report() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
             </div>
         )
     }
@@ -61,7 +61,7 @@ export default function Report() {
             <div className="text-center py-20 text-muted-foreground">
                 <ShieldAlert className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p>Reporte no encontrado.</p>
-                <Link to="/scans" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">
+                <Link to="/scans" className="text-blue-500 hover:text-blue-600 dark:hover:text-blue-300 text-sm mt-2 inline-block">
                     ← Volver a escaneos
                 </Link>
             </div>
@@ -70,10 +70,10 @@ export default function Report() {
 
     const severityIcon = (severity) => {
         switch (severity) {
-            case 'HIGH': return <AlertTriangle className="w-4 h-4 text-red-400" />
-            case 'MEDIUM': return <ShieldAlert className="w-4 h-4 text-amber-400" />
-            case 'LOW': return <Shield className="w-4 h-4 text-blue-400" />
-            default: return <Info className="w-4 h-4 text-gray-400" />
+            case 'HIGH': return <AlertTriangle className="w-4 h-4 text-red-500" />
+            case 'MEDIUM': return <ShieldAlert className="w-4 h-4 text-amber-500" />
+            case 'LOW': return <Shield className="w-4 h-4 text-blue-500" />
+            default: return <Info className="w-4 h-4 text-gray-500" />
         }
     }
 
@@ -89,7 +89,7 @@ export default function Report() {
                         <ArrowLeft className="w-3 h-3" /> Volver a escaneos
                     </Link>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <FileText className="w-6 h-6 text-blue-400" />
+                        <FileText className="w-6 h-6 text-blue-500" />
                         Reporte de Auditoría
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1">{report.url}</p>
@@ -98,7 +98,7 @@ export default function Report() {
                     <button
                         onClick={() => handleDownload('html')}
                         disabled={downloading}
-                        className="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors text-sm font-medium flex items-center gap-2"
+                        className="px-4 py-2 rounded-lg glass hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                         <Download className="w-4 h-4" /> HTML
                     </button>
@@ -116,9 +116,9 @@ export default function Report() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                     { label: 'Total', value: report.stats.total, color: 'text-foreground' },
-                    { label: 'Alto', value: report.stats.high, color: 'text-red-400' },
-                    { label: 'Medio', value: report.stats.medium, color: 'text-amber-400' },
-                    { label: 'Bajo', value: report.stats.low, color: 'text-blue-400' },
+                    { label: 'Alto', value: report.stats.high, color: 'text-red-500 dark:text-red-400' },
+                    { label: 'Medio', value: report.stats.medium, color: 'text-amber-500 dark:text-amber-400' },
+                    { label: 'Bajo', value: report.stats.low, color: 'text-blue-500 dark:text-blue-400' },
                 ].map((s) => (
                     <div key={s.label} className="glass rounded-xl p-4 text-center">
                         <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -132,14 +132,14 @@ export default function Report() {
                 <button
                     onClick={() => setActiveTab('technical')}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-            ${activeTab === 'technical' ? 'gradient-primary text-white' : 'hover:bg-white/5'}`}
+            ${activeTab === 'technical' ? 'gradient-primary text-white' : 'hover:bg-gray-100 dark:hover:bg-white/5'}`}
                 >
                     🔍 Reporte Técnico
                 </button>
                 <button
                     onClick={() => setActiveTab('executive')}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-            ${activeTab === 'executive' ? 'gradient-primary text-white' : 'hover:bg-white/5'}`}
+            ${activeTab === 'executive' ? 'gradient-primary text-white' : 'hover:bg-gray-100 dark:hover:bg-white/5'}`}
                 >
                     📋 Resumen Ejecutivo
                 </button>
@@ -150,8 +150,8 @@ export default function Report() {
                 <div className="space-y-3">
                     {report.findings.length === 0 ? (
                         <div className="glass rounded-xl p-8 text-center">
-                            <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
-                            <p className="font-medium text-emerald-400">¡Sin hallazgos!</p>
+                            <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
+                            <p className="font-medium text-emerald-500">¡Sin hallazgos!</p>
                             <p className="text-sm text-muted-foreground mt-1">
                                 No se encontraron vulnerabilidades en este escaneo.
                             </p>
@@ -160,7 +160,7 @@ export default function Report() {
                         report.findings.map((finding) => (
                             <div
                                 key={finding.id}
-                                className="glass rounded-xl p-5 border-l-4 hover:bg-white/5 transition-colors"
+                                className="glass rounded-xl p-5 border-l-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                                 style={{
                                     borderLeftColor:
                                         finding.severity === 'HIGH' ? '#ef4444' :
@@ -180,13 +180,13 @@ export default function Report() {
                                 <p className="text-sm text-muted-foreground mt-2">{finding.description}</p>
                                 {finding.recommendation && (
                                     <div className="mt-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
-                                        <p className="text-sm text-blue-300">
+                                        <p className="text-sm text-blue-600 dark:text-blue-300">
                                             <strong>Recomendación:</strong> {finding.recommendation}
                                         </p>
                                     </div>
                                 )}
                                 {finding.evidence && (
-                                    <div className="mt-2 p-2 rounded bg-white/5 text-xs font-mono text-muted-foreground">
+                                    <div className="mt-2 p-2 rounded bg-gray-100 dark:bg-white/5 text-xs font-mono text-muted-foreground">
                                         {finding.evidence}
                                     </div>
                                 )}
@@ -198,7 +198,7 @@ export default function Report() {
                 <div className="glass rounded-xl p-6">
                     {report.executive_summary ? (
                         <div
-                            className="prose prose-invert prose-sm max-w-none"
+                            className="prose prose-sm dark:prose-invert max-w-none"
                             dangerouslySetInnerHTML={{
                                 __html: report.executive_summary.content
                                     .replace(/\n/g, '<br>')
