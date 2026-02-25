@@ -11,7 +11,23 @@ import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
-function App() {
+function App({ authEnabled = true }) {
+    if (!authEnabled) {
+        return (
+            <div className="min-h-screen gradient-bg flex items-center justify-center p-6">
+                <div className="max-w-xl w-full glass-strong rounded-2xl p-8 text-center">
+                    <h1 className="text-2xl font-bold mb-3">Frontend loaded</h1>
+                    <p className="text-muted-foreground mb-4">
+                        Authentication is disabled because <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is missing.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Add this key in your <strong>.env</strong> file and restart <strong>npm run dev</strong> to enable login/register pages.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <>
             {/* Unauthenticated routes */}

@@ -20,10 +20,9 @@ def generate_executive_summary(findings_data, url):
         dict with 'content' and 'token_usage'.
     """
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
         # Build the prompt
         findings_text = "\n".join([
@@ -52,11 +51,14 @@ Low severity: {sum(1 for f in findings_data if f['severity'] == 'LOW')}
 
 Write the summary in a professional but accessible tone. Use markdown formatting."""
 
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
 
         return {
             'content': response.text,
-            'token_usage': response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0,
+            'token_usage': getattr(response.usage_metadata, 'total_token_count', 0) if response.usage_metadata else 0,
         }
 
     except Exception as e:

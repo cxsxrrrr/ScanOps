@@ -1,5 +1,6 @@
 """Views for urls_manager app."""
 from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from .models import URLAsset
 from .serializers import URLAssetSerializer
@@ -21,7 +22,7 @@ class URLAssetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Assign the URL to the user's organization."""
         if not self.request.user.organization:
-            raise permissions.PermissionDenied(
+            raise PermissionDenied(
                 'You must belong to an organization to register URLs.'
             )
         serializer.save(organization=self.request.user.organization)
