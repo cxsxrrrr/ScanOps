@@ -39,7 +39,7 @@ export default function ScanHistory() {
     }
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -52,15 +52,15 @@ export default function ScanHistory() {
                 </div>
 
                 {/* Filter */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <Filter className="w-4 h-4 text-muted-foreground" />
                     {['all', 'completed', 'running', 'pending', 'error'].map((f) => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
                 ${filter === f
-                                    ? 'gradient-primary text-white'
+                                    ? 'gradient-primary text-white shadow-md shadow-blue-500/20'
                                     : 'glass hover:bg-white/10'
                                 }`}
                         >
@@ -78,8 +78,8 @@ export default function ScanHistory() {
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
-                        <ScanSearch className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                        <p>No hay escaneos que mostrar.</p>
+                        <ScanSearch className="w-12 h-12 mx-auto mb-3 opacity-30 empty-state-icon" />
+                        <p className="font-medium">No hay escaneos que mostrar.</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-white/5">

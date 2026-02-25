@@ -78,8 +78,41 @@ export default function Dashboard() {
         },
     ]
 
+    if (loading) {
+        return (
+            <div className="space-y-8">
+                <div>
+                    <div className="skeleton h-9 w-72 mb-2" />
+                    <div className="skeleton h-5 w-96" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="glass rounded-xl p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="skeleton w-10 h-10 rounded-lg" />
+                                <div className="skeleton w-4 h-4 rounded" />
+                            </div>
+                            <div className="skeleton h-9 w-16 mb-1" />
+                            <div className="skeleton h-4 w-28" />
+                        </div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="glass rounded-xl p-6">
+                        <div className="skeleton h-6 w-40 mb-4" />
+                        {[1, 2, 3].map(i => <div key={i} className="skeleton h-10 w-full mb-2 rounded-lg" />)}
+                    </div>
+                    <div className="lg:col-span-2 glass rounded-xl p-6">
+                        <div className="skeleton h-6 w-48 mb-4" />
+                        {[1, 2, 3].map(i => <div key={i} className="skeleton h-12 w-full mb-2 rounded-lg" />)}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-8">
             {/* Welcome */}
             <div>
                 <h1 className="text-3xl font-bold">
@@ -159,8 +192,8 @@ export default function Dashboard() {
                     </h2>
                     {recentScans.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            <ScanSearch className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                            <p>No hay escaneos aún.</p>
+                            <ScanSearch className="w-12 h-12 mx-auto mb-3 opacity-30 empty-state-icon" />
+                            <p className="font-medium">No hay escaneos aún.</p>
                             <p className="text-sm mt-1">Registra una URL para comenzar.</p>
                         </div>
                     ) : (
