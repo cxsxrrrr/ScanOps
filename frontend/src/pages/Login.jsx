@@ -3,6 +3,63 @@ import { Link } from 'react-router-dom'
 import { ShieldCheck, ArrowRight } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 
+/* ── Shared Clerk appearance tokens ── */
+const clerkAppearance = (isDark) => ({
+    elements: {
+        rootBox: 'w-full',
+        card: 'bg-transparent shadow-none p-0 w-full',
+        headerTitle: 'hidden',
+        headerSubtitle: 'hidden',
+
+        /* Social buttons */
+        socialButtonsBlockButton: isDark
+            ? 'glass border-white/20 text-foreground'
+            : 'bg-white border border-gray-200 text-gray-700 shadow-sm',
+        socialButtonsBlockButtonText: 'font-medium',
+
+        /* Primary CTA */
+        formButtonPrimary:
+            'gradient-primary border-0 shadow-lg shadow-blue-500/25',
+
+        /* Inputs */
+        formFieldInput: isDark
+            ? 'bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40'
+            : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
+
+        /* Labels */
+        formFieldLabel: isDark
+            ? 'text-foreground font-semibold'
+            : 'text-gray-700 font-semibold',
+
+        /* Divider */
+        dividerLine: isDark ? 'bg-white/10' : 'bg-gray-200',
+        dividerText: 'text-muted-foreground',
+
+        /* Footer links */
+        footerActionLink: 'text-blue-500 hover:text-blue-400 font-semibold',
+        footerActionText: isDark ? 'text-muted-foreground' : 'text-gray-500',
+
+        /* Identity preview (email step) */
+        identityPreview: isDark
+            ? 'bg-white/5 border-white/10'
+            : 'bg-gray-50 border border-gray-200',
+        identityPreviewEditButton: 'text-blue-500 hover:text-blue-400',
+
+        /* Password toggle */
+        formFieldInputShowPasswordButton: isDark
+            ? 'text-white/50 hover:text-white/80'
+            : 'text-gray-400 hover:text-gray-600',
+
+        /* Alert / error messages */
+        alert: isDark
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : 'bg-red-50 border border-red-200 text-red-600',
+
+        /* Form field error */
+        formFieldErrorText: 'text-red-500 text-xs mt-1',
+    },
+})
+
 export default function Login() {
     const { isDark } = useTheme()
 
@@ -40,9 +97,10 @@ export default function Login() {
             </div>
 
             {/* Right panel — login form */}
-            <div className="flex-1 flex flex-col justify-center items-center p-8">
+            <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-8">
+                {/* Mobile branding */}
                 <div className="lg:hidden mb-8 text-center">
-                    <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4">
+                    <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
                         <ShieldCheck className="w-7 h-7 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
@@ -50,42 +108,26 @@ export default function Login() {
                     </h1>
                 </div>
 
-                <div className="w-full max-w-md">
-                    <div className="glass-strong rounded-2xl p-8">
-                        <h2 className="text-2xl font-bold text-center mb-2">Bienvenido</h2>
-                        <p className="text-muted-foreground text-center mb-6">
+                <div className="w-full max-w-[420px]">
+                    <div className="glass-strong rounded-2xl p-6 sm:p-8 login-card-enter overflow-hidden">
+                        <h2 className="text-2xl font-bold text-center mb-1">Bienvenido</h2>
+                        <p className="text-muted-foreground text-center text-sm mb-6">
                             Inicia sesión para acceder a tu panel
                         </p>
+
                         <SignIn
                             routing="hash"
                             signUpUrl="/register"
-                            appearance={{
-                                elements: {
-                                    rootBox: 'w-full',
-                                    card: 'bg-transparent shadow-none p-0 w-full',
-                                    headerTitle: 'hidden',
-                                    headerSubtitle: 'hidden',
-                                    socialButtonsBlockButton: isDark
-                                        ? 'glass border-white/20 hover:bg-white/10 text-foreground'
-                                        : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 shadow-sm',
-                                    formButtonPrimary: 'gradient-primary border-0 hover:opacity-90 transition-opacity',
-                                    formFieldInput: isDark
-                                        ? 'bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                                        : 'bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
-                                    formFieldLabel: isDark ? 'text-foreground' : 'text-gray-700 font-medium',
-                                    dividerLine: isDark ? 'bg-white/10' : 'bg-gray-300',
-                                    dividerText: 'text-muted-foreground',
-                                    footerActionLink: 'text-blue-500 hover:text-blue-400',
-                                    identityPreviewEditButton: 'text-blue-500',
-                                    formFieldInputShowPasswordButton: isDark ? 'text-white/50 hover:text-white/80' : 'text-gray-500 hover:text-gray-700',
-                                },
-                            }}
+                            appearance={clerkAppearance(isDark)}
                         />
                     </div>
 
                     <p className="text-center mt-6 text-sm text-muted-foreground">
                         ¿No tienes cuenta?{' '}
-                        <Link to="/register" className="text-blue-500 hover:text-blue-400 font-medium inline-flex items-center gap-1">
+                        <Link
+                            to="/register"
+                            className="text-blue-500 hover:text-blue-400 font-semibold inline-flex items-center gap-1 transition-colors"
+                        >
                             Regístrate <ArrowRight className="w-3 h-3" />
                         </Link>
                     </p>
@@ -94,3 +136,4 @@ export default function Login() {
         </div>
     )
 }
+
