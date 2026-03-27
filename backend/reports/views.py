@@ -1,10 +1,11 @@
 """Views for reports app."""
-import json
+from io import BytesIO
+
 from django.http import HttpResponse
-from django.template.loader import render_to_string
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from openpyxl import Workbook
 
 from scanner.models import Scan
 from .models import ExecutiveSummary
@@ -69,7 +70,7 @@ def report_detail(request, scan_id):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def download_report(request, scan_id):
-    """Download report as HTML."""
+    """Download report as Excel (.xlsx) or PDF."""
     try:
         scan = Scan.objects.select_related(
             'url_asset'
@@ -155,22 +156,72 @@ def download_report(request, scan_id):
 </body>
 </html>"""
 
-    fmt = request.query_params.get('format', 'html')
+    fmt = (request.query_params.get('format', 'excel') or 'excel').lower()
 
-    if fmt == 'html':
-        response = HttpResponse(html_content, content_type='text/html')
-        response['Content-Disposition'] = f'attachment; filename="reporte_scan_{scan_id}.html"'
-        return response
+    if fmt in ('excel', 'xlsx'):
+        workbook = Workbook()
+        summary_ws = workbook.active
+        summary_ws.title = 'Resumen'
+        summary_ws.append(['Campo', 'Valor'])
+        summary_ws.append(['Scan ID', scan.pk])
+        summary_ws.append(['URL', scan.url_asset.url])
+        summary_ws.append(['Estado', scan.status])
+        summary_ws.append(['Fecha inicio', scan.started_at.strftime('%d/%m/%Y %H:%M') if scan.started_at else ''])
+        summary_ws.append(['Fecha fin', scan.finished_at.strftime('%d/%m/%Y %H:%M') if scan.finished_at else ''])
+        summary_ws.append(['Total hallazgos', findings.count()])
+        summary_ws.append(['Criticos', findings.filter(severity='CRITICAL').count()])
+        summary_ws.append(['Altos', findings.filter(severity='HIGH').count()])
+        summary_ws.append(['Medios', findings.filter(severity='MEDIUM').count()])
+        summary_ws.append(['Bajos', findings.filter(severity='LOW').count()])
+        summary_ws.append(['Info', findings.filter(severity='INFO').count()])
 
-    # For PDF, we'd use WeasyPrint (optional; requires system deps)
-    try:
-        from weasyprint import HTML
-        pdf = HTML(string=html_content).write_pdf()
-        response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="reporte_scan_{scan_id}.pdf"'
-        return response
-    except ImportError:
-        return Response(
-            {'detail': 'PDF generation not available. Download HTML instead.'},
-            status=501
+        findings_ws = workbook.create_sheet(title='Hallazgos')
+        findings_ws.append([
+            'ID', 'Titulo', 'Severidad', 'Categoria',
+            'Descripcion', 'Recomendacion', 'Evidencia',
+        ])
+        for finding in findings:
+            findings_ws.append([
+                finding.pk,
+                finding.title,
+                finding.severity,
+                finding.category,
+                finding.description,
+                finding.recommendation,
+                finding.evidence,
+            ])
+
+        if summary_content:
+            executive_ws = workbook.create_sheet(title='Resumen Ejecutivo')
+            executive_ws.append(['Contenido'])
+            executive_ws.append([summary_content])
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
+        response['Content-Disposition'] = f'attachment; filename="reporte_scan_{scan_id}.xlsx"'
+        return response
+
+    if fmt == 'pdf':
+        try:
+            from weasyprint import HTML
+
+            pdf = HTML(string=html_content).write_pdf()
+            response = HttpResponse(pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="reporte_scan_{scan_id}.pdf"'
+            return response
+        except Exception as exc:
+            return Response(
+                {'detail': f'PDF generation not available: {exc}'},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+    return Response(
+        {'detail': 'Formato no soportado. Usa format=excel o format=pdf.'},
+        status=status.HTTP_400_BAD_REQUEST,
+    )

@@ -24,6 +24,7 @@ sendgrid==6.11.0
 
 # PDF Generation
 weasyprint==63.1
+openpyxl==3.1.5
 
 # Environment Variables
 python-decouple==3.8
