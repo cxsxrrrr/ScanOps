@@ -22,27 +22,30 @@ export default function Report() {
             setReport(res.data)
         } catch (err) {
             console.error('Failed to load report:', err)
+            const detail = err?.response?.data?.detail
+            if (detail) alert(detail)
         } finally {
             setLoading(false)
         }
     }
 
-    async function handleDownload(format) {
+    async function handleDownload(format, extension = format) {
         setDownloading(true)
         try {
-            const res = await api.get(`/reports/${scanId}/download/?format=${format}`, {
+            const res = await api.get(`/reports/${scanId}/?download=1&format=${format}`, {
                 responseType: 'blob',
             })
             const url = window.URL.createObjectURL(new Blob([res.data]))
             const link = document.createElement('a')
             link.href = url
-            link.setAttribute('download', `reporte_scan_${scanId}.${format}`)
+            link.setAttribute('download', `reporte_scan_${scanId}.${extension}`)
             document.body.appendChild(link)
             link.click()
             link.remove()
             window.URL.revokeObjectURL(url)
         } catch (err) {
-            alert('Error al descargar el reporte.')
+            const detail = err?.response?.data?.detail
+            alert(detail || 'Error al descargar el reporte.')
         } finally {
             setDownloading(false)
         }
@@ -97,11 +100,11 @@ export default function Report() {
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => handleDownload('html')}
+                        onClick={() => handleDownload('excel', 'xlsx')}
                         disabled={downloading}
                         className="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors text-sm font-medium flex items-center gap-2"
                     >
-                        <Download className="w-4 h-4" /> HTML
+                        <Download className="w-4 h-4" /> Excel
                     </button>
                     <button
                         onClick={() => handleDownload('pdf')}
