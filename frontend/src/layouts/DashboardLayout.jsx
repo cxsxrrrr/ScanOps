@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
 import { useApiSetup } from '../hooks/useApi'
+import api from '../lib/api'
 import {
     LayoutDashboard,
     Globe,
@@ -57,16 +58,29 @@ export default function DashboardLayout() {
     const location = useLocation()
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
+    const [profile, setProfile] = useState(null)
+
+    // Fetch profile from backend to get role and plan
+    useEffect(() => {
+        async function loadProfile() {
+            try {
+                const res = await api.get('/auth/profile/')
+                setProfile(res.data)
+            } catch (err) {
+                console.error('Failed to load profile:', err)
+            }
+        }
+        loadProfile()
+    }, [])
 
     // Derive page name from current route
     const currentPageName = pageNames[location.pathname] || 'Reporte'
 
-    // Filter admin-only items (basic check — real role check should come from backend)
-    const isAdmin = user?.publicMetadata?.role === 'admin'
+    // Role and plan from backend profile
+    const isAdmin = profile?.role === 'admin'
     const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin)
 
-    // Plan info from public metadata (set by backend sync)
-    const currentPlan = user?.publicMetadata?.plan || 'free'
+    const currentPlan = profile?.organization?.plan || 'free'
     const PlanIcon = planIcons[currentPlan] || Shield
     const planBadgeClass = planBadgeClasses[currentPlan] || 'plan-badge-free'
 
