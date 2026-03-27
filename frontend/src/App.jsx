@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { SignedIn, SignedOut } from '@clerk/clerk-react'
+import { useApiSetup } from './hooks/useApi'
 import DashboardLayout from './layouts/DashboardLayout'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -12,8 +13,13 @@ import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Plans from './pages/Plans'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import JoinTeam from './pages/JoinTeam'
 
 function App({ authEnabled = true }) {
+    if (authEnabled) {
+        useApiSetup()
+    }
+
     if (!authEnabled) {
         return (
             <div className="min-h-screen gradient-bg flex items-center justify-center p-6">
@@ -38,6 +44,7 @@ function App({ authEnabled = true }) {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/terms" element={<TermsAndConditions />} />
+                    <Route path="/invite/:token" element={<JoinTeam />} />
                     <Route path="*" element={<Navigate to="/login" replace />} />
                 </Routes>
             </SignedOut>
@@ -55,6 +62,7 @@ function App({ authEnabled = true }) {
                         <Route path="settings" element={<Settings />} />
                         <Route path="admin" element={<AdminDashboard />} />
                     </Route>
+                    <Route path="/invite/:token" element={<JoinTeam />} />
                     <Route path="/terms" element={<TermsAndConditions />} />
                     <Route path="/login" element={<Navigate to="/" replace />} />
                     <Route path="/register" element={<Navigate to="/" replace />} />

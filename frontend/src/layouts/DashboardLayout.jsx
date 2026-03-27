@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
-import { useApiSetup } from '../hooks/useApi'
 import api from '../lib/api'
 import {
     LayoutDashboard,
@@ -53,12 +52,21 @@ const planBadgeClasses = {
 }
 
 export default function DashboardLayout() {
-    useApiSetup()
     const { user } = useUser()
+    const navigate = useNavigate()
     const location = useLocation()
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [profile, setProfile] = useState(null)
+
+    // Check for pending invite after login/registration
+    useEffect(() => {
+        const pendingInvite = sessionStorage.getItem('pendingInvite')
+        if (pendingInvite) {
+            sessionStorage.removeItem('pendingInvite')
+            navigate(`/invite/${pendingInvite}`)
+        }
+    }, [navigate])
 
     // Fetch profile from backend to get role and plan
     useEffect(() => {
