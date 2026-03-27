@@ -118,6 +118,9 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Keep query param "format" available for app logic (report export format)
+    # instead of DRF renderer selection.
+    'URL_FORMAT_OVERRIDE': None,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -159,9 +162,9 @@ CELERY_BEAT_SCHEDULE = {
 # --- Google Gemini ---
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
-# --- SendGrid ---
-SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
-SENDGRID_FROM_EMAIL = config('SENDGRID_FROM_EMAIL', default='noreply@auditoria.com')
+# --- Resend ---
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
+RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='onboarding@resend.dev')
 
 # --- Scan Engine Config ---
 SCAN_TIMEOUT = 30  # seconds per check

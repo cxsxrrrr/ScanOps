@@ -20,10 +20,11 @@ requests==2.32.3
 google-generativeai==0.8.4
 
 # Email
-sendgrid==6.11.0
+resend==2.0.0
 
 # PDF Generation
 weasyprint==63.1
+reportlab==4.2.2
 openpyxl==3.1.5
 
 # Environment Variables

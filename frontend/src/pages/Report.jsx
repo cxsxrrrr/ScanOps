@@ -22,6 +22,8 @@ export default function Report() {
             setReport(res.data)
         } catch (err) {
             console.error('Failed to load report:', err)
+            const detail = err?.response?.data?.detail
+            if (detail) alert(detail)
         } finally {
             setLoading(false)
         }
@@ -30,7 +32,7 @@ export default function Report() {
     async function handleDownload(format, extension = format) {
         setDownloading(true)
         try {
-            const res = await api.get(`/reports/${scanId}/download/?format=${format}`, {
+            const res = await api.get(`/reports/${scanId}/?download=1&format=${format}`, {
                 responseType: 'blob',
             })
             const url = window.URL.createObjectURL(new Blob([res.data]))
@@ -42,7 +44,8 @@ export default function Report() {
             link.remove()
             window.URL.revokeObjectURL(url)
         } catch (err) {
-            alert('Error al descargar el reporte.')
+            const detail = err?.response?.data?.detail
+            alert(detail || 'Error al descargar el reporte.')
         } finally {
             setDownloading(false)
         }
