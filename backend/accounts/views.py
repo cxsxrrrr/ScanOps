@@ -55,7 +55,7 @@ def organization_detail(request):
                 {'name': ['Organization name is required.']},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        org = Organization.objects.create(name=name)
+        org = Organization.objects.create(name=name, plan='free', url_limit=1)
         request.user.organization = org
         request.user.save()
         return Response(OrganizationSerializer(org).data, status=status.HTTP_201_CREATED)
@@ -70,3 +70,21 @@ def organization_detail(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_terms(request):
+    """Record that the user has accepted the terms and conditions."""
+    user = request.user
+    if user.has_accepted_terms:
+        return Response({
+            'detail': 'Terms already accepted.',
+            'accepted_terms_at': user.accepted_terms_at,
+        })
+
+    user.accept_terms()
+    return Response({
+        'detail': 'Terms accepted successfully.',
+        'accepted_terms_at': user.accepted_terms_at,
+    }, status=status.HTTP_200_OK)

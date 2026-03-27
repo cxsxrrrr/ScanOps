@@ -70,6 +70,7 @@ export default function Report() {
 
     const severityIcon = (severity) => {
         switch (severity) {
+            case 'CRITICAL': return <AlertTriangle className="w-4 h-4 text-fuchsia-400" />
             case 'HIGH': return <AlertTriangle className="w-4 h-4 text-red-400" />
             case 'MEDIUM': return <ShieldAlert className="w-4 h-4 text-amber-400" />
             case 'LOW': return <Shield className="w-4 h-4 text-blue-400" />
@@ -113,9 +114,10 @@ export default function Report() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {[
                     { label: 'Total', value: report.stats.total, color: 'text-foreground' },
+                    { label: 'Crítico', value: report.stats.critical || 0, color: 'text-fuchsia-400' },
                     { label: 'Alto', value: report.stats.high, color: 'text-red-400' },
                     { label: 'Medio', value: report.stats.medium, color: 'text-amber-400' },
                     { label: 'Bajo', value: report.stats.low, color: 'text-blue-400' },
@@ -163,9 +165,10 @@ export default function Report() {
                                 className="glass rounded-xl p-5 border-l-4 hover:bg-white/5 transition-colors"
                                 style={{
                                     borderLeftColor:
-                                        finding.severity === 'HIGH' ? '#ef4444' :
-                                            finding.severity === 'MEDIUM' ? '#f59e0b' :
-                                                finding.severity === 'LOW' ? '#3b82f6' : '#6b7280',
+                                        finding.severity === 'CRITICAL' ? '#d946ef' :
+                                            finding.severity === 'HIGH' ? '#ef4444' :
+                                                finding.severity === 'MEDIUM' ? '#f59e0b' :
+                                                    finding.severity === 'LOW' ? '#3b82f6' : '#6b7280',
                                 }}
                             >
                                 <div className="flex items-start justify-between gap-3">

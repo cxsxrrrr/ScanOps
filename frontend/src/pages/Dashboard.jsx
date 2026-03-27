@@ -11,12 +11,23 @@ import {
     ArrowRight,
     TrendingUp,
     Activity,
+    Sparkles,
+    Crown,
+    Zap,
+    ShieldCheck,
 } from 'lucide-react'
+
+const planConfig = {
+    free: { icon: Shield, gradient: 'from-gray-500 to-gray-600', badge: 'plan-badge-free', limit: 1 },
+    pro: { icon: Zap, gradient: 'from-purple-500 to-purple-600', badge: 'plan-badge-pro', limit: 5 },
+    ultimate: { icon: Crown, gradient: 'from-amber-500 to-orange-500', badge: 'plan-badge-ultimate', limit: 10 },
+}
 
 export default function Dashboard() {
     const { user } = useUser()
     const [stats, setStats] = useState(null)
     const [recentScans, setRecentScans] = useState([])
+    const [orgData, setOrgData] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -25,9 +36,10 @@ export default function Dashboard() {
 
     async function loadDashboard() {
         try {
-            const [urlsRes, scansRes] = await Promise.all([
+            const [urlsRes, scansRes, orgRes] = await Promise.all([
                 api.get('/urls/').catch(() => ({ data: { results: [] } })),
                 api.get('/scans/list/').catch(() => ({ data: { results: [] } })),
+                api.get('/auth/organization/').catch(() => ({ data: null })),
             ])
 
             const urls = urlsRes.data.results || urlsRes.data || []
@@ -40,12 +52,19 @@ export default function Dashboard() {
                 completedScans: scans.filter(s => s.status === 'completed').length,
             })
             setRecentScans(scans.slice(0, 5))
+            setOrgData(orgRes.data)
         } catch (err) {
             console.error('Failed to load dashboard:', err)
         } finally {
             setLoading(false)
         }
     }
+
+    const currentPlan = orgData?.plan || 'free'
+    const plan = planConfig[currentPlan] || planConfig.free
+    const urlsUsed = orgData?.urls_used || stats?.totalUrls || 0
+    const urlLimit = orgData?.url_limit || plan.limit
+    const usagePercent = Math.min((urlsUsed / urlLimit) * 100, 100)
 
     const statCards = [
         {
@@ -72,7 +91,7 @@ export default function Dashboard() {
         {
             label: 'Escaneos Exitosos',
             value: stats?.completedScans || 0,
-            icon: Shield,
+            icon: ShieldCheck,
             color: 'from-emerald-500 to-emerald-600',
             shadow: 'shadow-emerald-500/20',
         },
@@ -123,12 +142,13 @@ export default function Dashboard() {
                 </p>
             </div>
 
-            {/* Stat cards */}
+            {/* Plan Card + Stat cards in a row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {statCards.map((card) => (
+                {statCards.map((card, index) => (
                     <div
                         key={card.label}
-                        className={`glass rounded-xl p-5 hover:scale-[1.02] transition-all duration-300 cursor-default shadow-lg ${card.shadow}`}
+                        className={`glass-card rounded-xl p-5 hover:scale-[1.02] transition-all duration-300 cursor-default animate-fade-in stagger-${index + 1}`}
+                        style={{ animationFillMode: 'backwards' }}
                     >
                         <div className="flex items-center justify-between mb-3">
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg`}>
@@ -142,10 +162,62 @@ export default function Dashboard() {
                 ))}
             </div>
 
-            {/* Quick actions + Recent scans */}
+            {/* Plan usage + Quick actions + Recent scans */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Plan usage card */}
+                <div className="glass-card rounded-xl p-6">
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-amber-400" />
+                        Tu Plan
+                    </h2>
+
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center shadow-lg`}>
+                            <plan.icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <div className="font-bold text-lg capitalize">{currentPlan}</div>
+                            <span className={`${plan.badge} px-2 py-0.5 rounded-full text-xs font-bold`}>
+                                {currentPlan.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* URL usage */}
+                    <div className="mb-4">
+                        <div className="flex items-center justify-between text-sm mb-2">
+                            <span className="text-muted-foreground">URLs usadas</span>
+                            <span className="font-semibold">
+                                {urlsUsed}/{urlLimit}
+                            </span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                                className={`progress-bar-fill ${usagePercent >= 100 ? '!bg-red-500' : ''}`}
+                                style={{ width: `${usagePercent}%` }}
+                            />
+                        </div>
+                        {usagePercent >= 100 && (
+                            <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                Has alcanzado el límite de tu plan
+                            </p>
+                        )}
+                    </div>
+
+                    {currentPlan !== 'ultimate' && (
+                        <Link
+                            to="/plans"
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg gradient-primary text-white font-medium text-sm hover:opacity-90 transition-opacity"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Actualizar plan
+                        </Link>
+                    )}
+                </div>
+
                 {/* Quick actions */}
-                <div className="glass rounded-xl p-6">
+                <div className="glass-card rounded-xl p-6">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-blue-400" />
                         Acciones Rápidas
@@ -172,12 +244,12 @@ export default function Dashboard() {
                             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
                         <Link
-                            to="/settings"
+                            to="/plans"
                             className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
-                                <Shield className="w-5 h-5 text-emerald-400" />
-                                <span className="text-sm">Configurar notificaciones</span>
+                                <Sparkles className="w-5 h-5 text-amber-400" />
+                                <span className="text-sm">Ver planes</span>
                             </div>
                             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
@@ -185,7 +257,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Recent scans */}
-                <div className="lg:col-span-2 glass rounded-xl p-6">
+                <div className="glass-card rounded-xl p-6">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                         <ScanSearch className="w-5 h-5 text-purple-400" />
                         Escaneos Recientes
@@ -212,7 +284,6 @@ export default function Dashboard() {
                                         <span className={getStatusColor(scan.status)}>
                                             {getStatusLabel(scan.status)}
                                         </span>
-                                        <span className="hidden sm:inline">{formatDate(scan.started_at)}</span>
                                         {scan.high_count > 0 && (
                                             <span className="severity-high px-2 py-0.5 rounded text-xs font-medium">
                                                 {scan.high_count} Alto

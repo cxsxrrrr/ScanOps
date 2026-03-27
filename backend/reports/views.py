@@ -55,6 +55,7 @@ def report_detail(request, scan_id):
         'executive_summary': summary,
         'stats': {
             'total': findings.count(),
+            'critical': findings.filter(severity='CRITICAL').count(),
             'high': findings.filter(severity='HIGH').count(),
             'medium': findings.filter(severity='MEDIUM').count(),
             'low': findings.filter(severity='LOW').count(),
@@ -101,15 +102,18 @@ def download_report(request, scan_id):
         .meta {{ background: #f0f4f8; padding: 15px; border-radius: 8px; margin: 20px 0; }}
         .stats {{ display: flex; gap: 20px; margin: 20px 0; }}
         .stat {{ padding: 15px 25px; border-radius: 8px; text-align: center; color: white; }}
+        .stat.critical {{ background: #8b5cf6; }}
         .stat.high {{ background: #e74c3c; }}
         .stat.medium {{ background: #f39c12; }}
         .stat.low {{ background: #3498db; }}
         .finding {{ border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 4px solid; }}
+        .finding.CRITICAL {{ border-left-color: #8b5cf6; }}
         .finding.HIGH {{ border-left-color: #e74c3c; }}
         .finding.MEDIUM {{ border-left-color: #f39c12; }}
         .finding.LOW {{ border-left-color: #3498db; }}
         .finding.INFO {{ border-left-color: #95a5a6; }}
         .severity {{ display: inline-block; padding: 2px 8px; border-radius: 4px; color: white; font-size: 12px; }}
+        .severity.CRITICAL {{ background: #8b5cf6; }}
         .severity.HIGH {{ background: #e74c3c; }}
         .severity.MEDIUM {{ background: #f39c12; }}
         .severity.LOW {{ background: #3498db; }}
@@ -128,6 +132,7 @@ def download_report(request, scan_id):
 
     <h2>📊 Resumen de Hallazgos</h2>
     <div class="stats">
+        <div class="stat critical">Crítico: {findings.filter(severity='CRITICAL').count()}</div>
         <div class="stat high">Alto: {findings.filter(severity='HIGH').count()}</div>
         <div class="stat medium">Medio: {findings.filter(severity='MEDIUM').count()}</div>
         <div class="stat low">Bajo: {findings.filter(severity='LOW').count()}</div>

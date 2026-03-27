@@ -4,7 +4,7 @@ Tests for the ScanEngine — Priority 1 (Critical).
 Tests passive scan checks: security headers, cookies, SSL/TLS,
 information disclosure, mixed content, DNS, and error handling.
 """
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 from django.test import TestCase
 from scanner.engine import ScanEngine
 
@@ -12,11 +12,12 @@ from scanner.engine import ScanEngine
 class FakeResponse:
     """Helper to build mock HTTP responses."""
 
-    def __init__(self, headers=None, cookies=None, text='', status_code=200):
+    def __init__(self, headers=None, cookies=None, text='', status_code=200, url='http://example.com'):
         self.headers = headers or {}
         self.cookies = cookies or []
         self.text = text
         self.status_code = status_code
+        self.url = url
 
 
 class FakeCookie:
@@ -42,14 +43,18 @@ class FakeCookie:
         return '; '.join(parts)
 
 
+def _patch_engine_session(engine, fake_response):
+    """Patch the Session.get on a ScanEngine instance."""
+    engine._session.get = MagicMock(return_value=fake_response)
+
+
 class ScanEngineSecurityHeadersTest(TestCase):
     """Tests for HTTP security header checks."""
 
-    @patch('scanner.engine.requests.get')
-    def test_missing_all_security_headers(self, mock_get):
+    def test_missing_all_security_headers(self):
         """All headers missing → should produce 7 findings."""
-        mock_get.return_value = FakeResponse(headers={}, cookies=[])
         engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(headers={}, cookies=[]))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -65,8 +70,7 @@ class ScanEngineSecurityHeadersTest(TestCase):
         self.assertIn('Missing Referrer-Policy Header', titles)
         self.assertIn('Missing Permissions-Policy Header', titles)
 
-    @patch('scanner.engine.requests.get')
-    def test_all_security_headers_present(self, mock_get):
+    def test_all_security_headers_present(self):
         """All headers present → 0 header findings."""
         headers = {
             'Strict-Transport-Security': 'max-age=31536000',
@@ -77,8 +81,8 @@ class ScanEngineSecurityHeadersTest(TestCase):
             'Referrer-Policy': 'strict-origin-when-cross-origin',
             'Permissions-Policy': 'camera=()',
         }
-        mock_get.return_value = FakeResponse(headers=headers, cookies=[])
         engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(headers=headers, cookies=[]))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -86,11 +90,10 @@ class ScanEngineSecurityHeadersTest(TestCase):
         header_findings = [f for f in findings if f['category'] == 'headers']
         self.assertEqual(len(header_findings), 0)
 
-    @patch('scanner.engine.requests.get')
-    def test_hsts_missing_is_high_severity(self, mock_get):
+    def test_hsts_missing_is_high_severity(self):
         """Missing HSTS should be HIGH severity."""
-        mock_get.return_value = FakeResponse(headers={}, cookies=[])
         engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(headers={}, cookies=[]))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -98,11 +101,10 @@ class ScanEngineSecurityHeadersTest(TestCase):
         hsts = next(f for f in findings if 'Strict-Transport-Security' in f['title'])
         self.assertEqual(hsts['severity'], 'HIGH')
 
-    @patch('scanner.engine.requests.get')
-    def test_csp_missing_is_medium_severity(self, mock_get):
+    def test_csp_missing_is_medium_severity(self):
         """Missing CSP should be MEDIUM severity."""
-        mock_get.return_value = FakeResponse(headers={}, cookies=[])
         engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(headers={}, cookies=[]))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -114,12 +116,11 @@ class ScanEngineSecurityHeadersTest(TestCase):
 class ScanEngineCookieTest(TestCase):
     """Tests for cookie security checks."""
 
-    @patch('scanner.engine.requests.get')
-    def test_insecure_cookie_detected(self, mock_get):
+    def test_insecure_cookie_detected(self):
         """Cookie without Secure flag → finding."""
         cookie = FakeCookie('session_id', secure=False, httponly=False, samesite=False)
-        mock_get.return_value = FakeResponse(headers={}, cookies=[cookie])
         engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(headers={}, cookies=[cookie]))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -129,12 +130,11 @@ class ScanEngineCookieTest(TestCase):
         self.assertEqual(cookie_findings[0]['severity'], 'MEDIUM')
         self.assertIn('session_id', cookie_findings[0]['title'])
 
-    @patch('scanner.engine.requests.get')
-    def test_secure_cookie_no_finding(self, mock_get):
+    def test_secure_cookie_no_finding(self):
         """Fully secure cookie → no cookie findings."""
         cookie = FakeCookie('session_id', secure=True, httponly=True, samesite=True)
-        mock_get.return_value = FakeResponse(headers={}, cookies=[cookie])
         engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(headers={}, cookies=[cookie]))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -146,14 +146,13 @@ class ScanEngineCookieTest(TestCase):
 class ScanEngineInfoDisclosureTest(TestCase):
     """Tests for information disclosure checks."""
 
-    @patch('scanner.engine.requests.get')
-    def test_server_version_disclosure(self, mock_get):
+    def test_server_version_disclosure(self):
         """Server header with version → LOW finding."""
-        mock_get.return_value = FakeResponse(
+        engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(
             headers={'Server': 'Apache/2.4.41 (Ubuntu)'},
             cookies=[],
-        )
-        engine = ScanEngine('http://example.com')
+        ))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -161,14 +160,13 @@ class ScanEngineInfoDisclosureTest(TestCase):
         info_findings = [f for f in findings if f['category'] == 'info_disclosure']
         self.assertTrue(any('Server Version' in f['title'] for f in info_findings))
 
-    @patch('scanner.engine.requests.get')
-    def test_powered_by_disclosure(self, mock_get):
+    def test_powered_by_disclosure(self):
         """X-Powered-By header → LOW finding."""
-        mock_get.return_value = FakeResponse(
+        engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(
             headers={'X-Powered-By': 'PHP/7.4'},
             cookies=[],
-        )
-        engine = ScanEngine('http://example.com')
+        ))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -180,15 +178,14 @@ class ScanEngineInfoDisclosureTest(TestCase):
 class ScanEngineMixedContentTest(TestCase):
     """Tests for mixed content detection."""
 
-    @patch('scanner.engine.requests.get')
-    def test_mixed_content_detected(self, mock_get):
+    def test_mixed_content_detected(self):
         """HTTPS page with HTTP references → MEDIUM finding."""
-        mock_get.return_value = FakeResponse(
+        engine = ScanEngine('https://example.com')
+        _patch_engine_session(engine, FakeResponse(
             headers={},
             cookies=[],
             text='<img src="http://insecure.com/image.png">',
-        )
-        engine = ScanEngine('https://example.com')
+        ))
 
         with patch.object(engine, '_check_ssl'):
             with patch.object(engine, '_check_dns_records'):
@@ -198,15 +195,14 @@ class ScanEngineMixedContentTest(TestCase):
         self.assertEqual(len(mixed), 1)
         self.assertEqual(mixed[0]['severity'], 'MEDIUM')
 
-    @patch('scanner.engine.requests.get')
-    def test_no_mixed_content_on_http(self, mock_get):
+    def test_no_mixed_content_on_http(self):
         """HTTP page → no mixed content check."""
-        mock_get.return_value = FakeResponse(
+        engine = ScanEngine('http://example.com')
+        _patch_engine_session(engine, FakeResponse(
             headers={},
             cookies=[],
             text='<img src="http://example.com/image.png">',
-        )
-        engine = ScanEngine('http://example.com')
+        ))
 
         with patch.object(engine, '_check_dns_records'):
             findings = engine.run()
@@ -218,36 +214,37 @@ class ScanEngineMixedContentTest(TestCase):
 class ScanEngineErrorHandlingTest(TestCase):
     """Tests for network error handling."""
 
-    @patch('scanner.engine.requests.get')
-    def test_connection_timeout(self, mock_get):
+    def test_connection_timeout(self):
         """Timeout → MEDIUM finding."""
         import requests as real_requests
-        mock_get.side_effect = real_requests.exceptions.Timeout()
         engine = ScanEngine('http://example.com')
+        engine._session.get = MagicMock(side_effect=real_requests.exceptions.Timeout())
         findings = engine.run()
 
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]['severity'], 'MEDIUM')
         self.assertIn('Timeout', findings[0]['title'])
 
-    @patch('scanner.engine.requests.get')
-    def test_connection_error(self, mock_get):
+    def test_connection_error(self):
         """Connection error → HIGH finding."""
         import requests as real_requests
-        mock_get.side_effect = real_requests.exceptions.ConnectionError('refused')
         engine = ScanEngine('http://unreachable.test')
+        engine._session.get = MagicMock(
+            side_effect=real_requests.exceptions.ConnectionError('refused')
+        )
         findings = engine.run()
 
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]['severity'], 'HIGH')
         self.assertIn('Connection Error', findings[0]['title'])
 
-    @patch('scanner.engine.requests.get')
-    def test_ssl_error(self, mock_get):
+    def test_ssl_error(self):
         """SSL error → HIGH finding."""
         import requests as real_requests
-        mock_get.side_effect = real_requests.exceptions.SSLError('cert invalid')
         engine = ScanEngine('https://bad-ssl.test')
+        engine._session.get = MagicMock(
+            side_effect=real_requests.exceptions.SSLError('cert invalid')
+        )
         findings = engine.run()
 
         self.assertEqual(len(findings), 1)

@@ -103,6 +103,12 @@ export default function ScanHistory() {
                                 </div>
 
                                 <div className="flex items-center gap-3 ml-4">
+                                    {scan.critical_count > 0 && (
+                                        <span className="severity-critical px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            {scan.critical_count}
+                                        </span>
+                                    )}
                                     {scan.high_count > 0 && (
                                         <span className="severity-high px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1">
                                             <AlertTriangle className="w-3 h-3" />

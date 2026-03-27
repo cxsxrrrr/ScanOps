@@ -18,6 +18,7 @@ export function formatDate(dateString) {
 
 export function getSeverityColor(severity) {
   const colors = {
+    CRITICAL: 'severity-critical',
     HIGH: 'severity-high',
     MEDIUM: 'severity-medium',
     LOW: 'severity-low',
@@ -28,6 +29,7 @@ export function getSeverityColor(severity) {
 
 export function getSeverityLabel(severity) {
   const labels = {
+    CRITICAL: 'Crítico',
     HIGH: 'Alto',
     MEDIUM: 'Medio',
     LOW: 'Bajo',

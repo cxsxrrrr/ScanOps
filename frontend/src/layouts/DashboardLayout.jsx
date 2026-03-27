@@ -12,12 +12,18 @@ import {
     X,
     ChevronLeft,
     User,
+    Sparkles,
+    Crown,
+    Zap,
+    Shield,
+    ScrollText,
 } from 'lucide-react'
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/urls', icon: Globe, label: 'URLs' },
     { to: '/scans', icon: ScanSearch, label: 'Escaneos' },
+    { to: '/plans', icon: Sparkles, label: 'Planes' },
     { to: '/profile', icon: User, label: 'Perfil' },
     { to: '/settings', icon: Settings, label: 'Configuración' },
     { to: '/admin', icon: ShieldCheck, label: 'Admin', adminOnly: true },
@@ -27,9 +33,22 @@ const pageNames = {
     '/': 'Dashboard',
     '/urls': 'URLs Registradas',
     '/scans': 'Historial de Escaneos',
+    '/plans': 'Planes',
     '/profile': 'Mi Perfil',
     '/settings': 'Configuración',
     '/admin': 'Panel de Administración',
+}
+
+const planIcons = {
+    free: Shield,
+    pro: Zap,
+    ultimate: Crown,
+}
+
+const planBadgeClasses = {
+    free: 'plan-badge-free',
+    pro: 'plan-badge-pro',
+    ultimate: 'plan-badge-ultimate',
 }
 
 export default function DashboardLayout() {
@@ -45,6 +64,11 @@ export default function DashboardLayout() {
     // Filter admin-only items (basic check — real role check should come from backend)
     const isAdmin = user?.publicMetadata?.role === 'admin'
     const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin)
+
+    // Plan info from public metadata (set by backend sync)
+    const currentPlan = user?.publicMetadata?.plan || 'free'
+    const PlanIcon = planIcons[currentPlan] || Shield
+    const planBadgeClass = planBadgeClasses[currentPlan] || 'plan-badge-free'
 
     return (
         <div className="flex h-screen overflow-hidden gradient-bg">
@@ -76,7 +100,7 @@ export default function DashboardLayout() {
                                 <ShieldCheck className="w-5 h-5 text-white" />
                             </div>
                             <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                AuditWeb
+                                ScanOps
                             </span>
                         </div>
                     )}
@@ -128,6 +152,20 @@ export default function DashboardLayout() {
                     ))}
                 </nav>
 
+                {/* Terms link */}
+                {!collapsed && (
+                    <div className="px-3 pb-2">
+                        <NavLink
+                            to="/terms"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground rounded-lg hover:bg-white/5 transition-colors"
+                        >
+                            <ScrollText className="w-3.5 h-3.5" />
+                            Términos y Condiciones
+                        </NavLink>
+                    </div>
+                )}
+
                 {/* User section */}
                 <div className="p-3 border-t border-white/10">
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
@@ -140,12 +178,22 @@ export default function DashboardLayout() {
                         />
                         {!collapsed && (
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                    {user?.firstName || 'Usuario'}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                    {user?.primaryEmailAddress?.emailAddress}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium truncate">
+                                        {user?.firstName || 'Usuario'}
+                                    </p>
+                                    {isAdmin && (
+                                        <span className="role-badge-admin px-1.5 py-0.5 rounded text-[10px] font-bold leading-none">
+                                            ADMIN
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className={`${planBadgeClass} px-1.5 py-0.5 rounded text-[10px] font-bold leading-none inline-flex items-center gap-1`}>
+                                        <PlanIcon className="w-2.5 h-2.5" />
+                                        {currentPlan.toUpperCase()}
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -172,7 +220,7 @@ export default function DashboardLayout() {
                         <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="hidden sm:inline">Sistema activo</span>
                         <span className="text-white/20">•</span>
-                        <span>v1.0</span>
+                        <span>v2.0</span>
                     </div>
                 </header>
 

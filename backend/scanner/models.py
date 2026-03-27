@@ -40,6 +40,10 @@ class Scan(models.Model):
         return self.findings.count()
 
     @property
+    def critical_count(self):
+        return self.findings.filter(severity='CRITICAL').count()
+
+    @property
     def high_count(self):
         return self.findings.filter(severity='HIGH').count()
 
@@ -56,6 +60,7 @@ class Finding(models.Model):
     """A security finding from a scan."""
 
     SEVERITY_CHOICES = [
+        ('CRITICAL', 'Crítico'),
         ('HIGH', 'Alto'),
         ('MEDIUM', 'Medio'),
         ('LOW', 'Bajo'),
@@ -63,6 +68,7 @@ class Finding(models.Model):
     ]
 
     CATEGORY_CHOICES = [
+        # Existing categories
         ('headers', 'HTTP Headers'),
         ('ssl', 'SSL/TLS'),
         ('cookies', 'Cookies'),
@@ -70,6 +76,42 @@ class Finding(models.Model):
         ('dns', 'DNS Configuration'),
         ('mixed_content', 'Mixed Content'),
         ('redirect', 'Open Redirect'),
+        # Injection
+        ('sqli', 'SQL Injection'),
+        ('xss', 'Cross-Site Scripting'),
+        ('nosqli', 'NoSQL Injection'),
+        ('cmd_injection', 'OS Command Injection'),
+        ('xxe', 'XXE Injection'),
+        ('ssti', 'Server-Side Template Injection'),
+        # Access control
+        ('csrf', 'CSRF'),
+        ('clickjacking', 'Clickjacking'),
+        ('cors', 'CORS Misconfiguration'),
+        ('ssrf', 'SSRF'),
+        ('path_traversal', 'Path Traversal'),
+        ('access_control', 'Broken Access Control'),
+        ('bypass_403', '403 Bypass'),
+        ('host_header', 'HTTP Host Header'),
+        # Authentication
+        ('auth', 'Authentication'),
+        ('jwt', 'JWT Vulnerabilities'),
+        ('oauth', 'OAuth'),
+        ('websockets', 'WebSockets'),
+        # Application security
+        ('http_smuggling', 'HTTP Request Smuggling'),
+        ('cache_poisoning', 'Web Cache Poisoning'),
+        ('deserialization', 'Insecure Deserialization'),
+        ('file_upload', 'File Upload Vulnerabilities'),
+        ('prototype_pollution', 'Prototype Pollution'),
+        ('graphql', 'GraphQL'),
+        ('race_condition', 'Race Conditions'),
+        ('api', 'API Security'),
+        ('subdomain_takeover', 'Subdomain Takeover'),
+        ('subdomain', 'Subdomain Discovery'),
+        ('wordpress', 'WordPress'),
+        ('technology', 'Technology'),
+        ('cache_deception', 'Web Cache Deception'),
+        ('llm', 'Web LLM Attacks'),
         ('other', 'Other'),
     ]
 
@@ -86,11 +128,12 @@ class Finding(models.Model):
     class Meta:
         ordering = [
             models.Case(
-                models.When(severity='HIGH', then=0),
-                models.When(severity='MEDIUM', then=1),
-                models.When(severity='LOW', then=2),
-                models.When(severity='INFO', then=3),
-                default=4,
+                models.When(severity='CRITICAL', then=0),
+                models.When(severity='HIGH', then=1),
+                models.When(severity='MEDIUM', then=2),
+                models.When(severity='LOW', then=3),
+                models.When(severity='INFO', then=4),
+                default=5,
                 output_field=models.IntegerField(),
             )
         ]
