@@ -108,7 +108,7 @@ export default function AdminDashboard() {
                 </div>
                 <button
                     onClick={loadData}
-                    className="p-2 rounded-lg glass hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-lg glass hover:bg-foreground/10 transition-colors"
                 >
                     <RefreshCw className="w-4 h-4" />
                 </button>
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
                         className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-                            ${activeTab === tab.key ? 'gradient-primary text-white' : 'hover:bg-white/5'}`}
+                            ${activeTab === tab.key ? 'gradient-primary text-white' : 'hover:bg-foreground/5'}`}
                     >
                         {tab.label}
                     </button>
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
                                 const config = planConfig[plan] || planConfig.free
                                 const PlanIcon = config.icon
                                 return (
-                                    <div key={plan} className="text-center p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                    <div key={plan} className="text-center p-4 rounded-xl bg-foreground/5 hover:bg-foreground/10 transition-colors">
                                         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center mx-auto mb-2`}>
                                             <PlanIcon className="w-5 h-5 text-white" />
                                         </div>
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
                         <h2 className="text-lg font-semibold mb-4">Estado de Escaneos</h2>
                         <div className="flex gap-4">
                             {Object.entries(metrics.scans.by_status).map(([status, count]) => (
-                                <div key={status} className="flex-1 text-center p-3 rounded-lg bg-white/5">
+                                <div key={status} className="flex-1 text-center p-3 rounded-lg bg-foreground/5">
                                     <div className="text-xl font-bold">{count}</div>
                                     <div className="text-xs text-muted-foreground capitalize">{status}</div>
                                 </div>
@@ -192,13 +192,13 @@ export default function AdminDashboard() {
 
             {activeTab === 'orgs' && (
                 <div className="glass-card rounded-xl overflow-hidden">
-                    <div className="p-4 border-b border-white/10">
+                    <div className="p-4 border-b border-border">
                         <h2 className="font-semibold flex items-center gap-2">
                             <Building className="w-5 h-5 text-purple-400" />
                             Organizaciones ({orgs.length})
                         </h2>
                     </div>
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border">
                         {orgs.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground">
                                 No hay organizaciones registradas.
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
                                 const config = planConfig[org.plan] || planConfig.free
                                 const PlanIcon = config.icon
                                 return (
-                                    <div key={org.id} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
+                                    <div key={org.id} className="flex items-center justify-between p-4 hover:bg-foreground/5 transition-colors">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center`}>
                                                 <PlanIcon className="w-5 h-5 text-white" />
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
                                                 value={org.plan}
                                                 onChange={(e) => handleChangePlan(org.id, e.target.value)}
                                                 disabled={updatingPlan === org.id}
-                                                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm outline-none cursor-pointer"
+                                                className="px-3 py-1.5 rounded-lg bg-foreground/5 border border-border text-sm outline-none cursor-pointer"
                                             >
                                                 <option value="free">Free</option>
                                                 <option value="pro">Pro</option>
@@ -250,20 +250,20 @@ export default function AdminDashboard() {
 
             {activeTab === 'users' && (
                 <div className="glass-card rounded-xl overflow-hidden">
-                    <div className="p-4 border-b border-white/10">
+                    <div className="p-4 border-b border-border">
                         <h2 className="font-semibold flex items-center gap-2">
                             <Users className="w-5 h-5 text-blue-400" />
                             Usuarios ({users.length})
                         </h2>
                     </div>
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border">
                         {users.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground">
                                 No hay usuarios registrados.
                             </div>
                         ) : (
                             users.map((u) => (
-                                <div key={u.id} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
+                                <div key={u.id} className="flex items-center justify-between p-4 hover:bg-foreground/5 transition-colors">
                                     <div>
                                         <p className="font-medium">{u.email}</p>
                                         <div className="flex items-center gap-2 mt-0.5">
@@ -292,7 +292,7 @@ export default function AdminDashboard() {
                                             value={u.role}
                                             onChange={(e) => handleChangeRole(u.id, e.target.value)}
                                             disabled={updatingRole === u.id}
-                                            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm outline-none cursor-pointer"
+                                            className="px-3 py-1.5 rounded-lg bg-foreground/5 border border-border text-sm outline-none cursor-pointer"
                                         >
                                             <option value="user">User</option>
                                             <option value="admin">Admin</option>

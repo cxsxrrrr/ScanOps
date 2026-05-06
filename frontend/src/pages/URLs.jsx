@@ -120,7 +120,7 @@ export default function URLs() {
                     <span className="text-sm font-medium">{toast.message}</span>
                     <button
                         onClick={() => setToast(null)}
-                        className="p-0.5 hover:bg-white/10 rounded transition-colors"
+                        className="p-0.5 hover:bg-foreground/10 rounded transition-colors"
                     >
                         <X className="w-3.5 h-3.5" />
                     </button>
@@ -156,7 +156,7 @@ export default function URLs() {
                         {urlsUsed} / {urlLimit}
                     </span>
                 </div>
-                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="w-full h-2.5 rounded-full bg-foreground/10 overflow-hidden">
                     <div
                         className={`progress-bar-fill ${usagePercent >= 100 ? '!bg-gradient-to-r !from-amber-500 !to-red-500' : ''}`}
                         style={{ width: `${usagePercent}%` }}
@@ -201,7 +201,7 @@ export default function URLs() {
                                 value={newUrl}
                                 onChange={(e) => setNewUrl(e.target.value)}
                                 placeholder="https://ejemplo.com"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
                                 required
                             />
                         </div>
@@ -226,7 +226,7 @@ export default function URLs() {
             {/* URL List */}
             <div className="glass-card rounded-xl overflow-hidden">
                 {loading ? (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border">
                         {[1, 2, 3].map(i => (
                             <div key={i} className="flex items-center justify-between p-4">
                                 <div className="flex items-center gap-3 flex-1">
@@ -250,7 +250,7 @@ export default function URLs() {
                         <p className="text-sm mt-1">Usa el formulario de arriba para agregar la primera.</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border">
                         {urls.map((url, index) => {
                             const blocked = isUrlBlocked(index)
                             return (
@@ -259,7 +259,7 @@ export default function URLs() {
                                     className={`flex items-center justify-between p-4 transition-colors ${
                                         blocked
                                             ? 'opacity-50 bg-amber-500/5'
-                                            : 'hover:bg-white/5'
+                                            : 'hover:bg-foreground/5'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -335,7 +335,7 @@ export default function URLs() {
                                                 </button>
                                                 <button
                                                     onClick={() => setDeleteConfirmId(null)}
-                                                    className="px-2 py-1 rounded-md bg-white/5 text-muted-foreground hover:bg-white/10 transition-colors text-xs font-medium"
+                                                    className="px-2 py-1 rounded-md bg-foreground/5 text-muted-foreground hover:bg-foreground/10 transition-colors text-xs font-medium"
                                                 >
                                                     No
                                                 </button>

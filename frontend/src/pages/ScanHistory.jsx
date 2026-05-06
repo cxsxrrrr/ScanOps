@@ -61,7 +61,7 @@ export default function ScanHistory() {
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
                 ${filter === f
                                     ? 'gradient-primary text-white shadow-md shadow-blue-500/20'
-                                    : 'glass hover:bg-white/10'
+                                    : 'glass hover:bg-foreground/10'
                                 }`}
                         >
                             {f === 'all' ? 'Todos' : getStatusLabel(f)}
@@ -82,12 +82,12 @@ export default function ScanHistory() {
                         <p className="font-medium">No hay escaneos que mostrar.</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border">
                         {filtered.map((scan) => (
                             <Link
                                 key={scan.id}
                                 to={`/scans/${scan.id}/report`}
-                                className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors group"
+                                className="flex items-center justify-between p-4 hover:bg-foreground/5 transition-colors group"
                             >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                     {statusIcon(scan.status)}

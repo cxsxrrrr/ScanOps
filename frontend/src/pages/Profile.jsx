@@ -78,7 +78,7 @@ export default function Profile() {
                         type="email"
                         value={user?.primaryEmailAddress?.emailAddress || ''}
                         disabled
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-muted-foreground text-sm cursor-not-allowed"
+                        className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border text-muted-foreground text-sm cursor-not-allowed"
                     />
                 </div>
 
@@ -89,7 +89,7 @@ export default function Profile() {
                             type="text"
                             value={profile.first_name}
                             onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                         />
                     </div>
                     <div>
@@ -98,7 +98,7 @@ export default function Profile() {
                             type="text"
                             value={profile.last_name}
                             onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                         />
                     </div>
                 </div>
@@ -113,7 +113,7 @@ export default function Profile() {
                         value={profile.organization_name}
                         onChange={(e) => setProfile({ ...profile, organization_name: e.target.value })}
                         placeholder="Nombre de tu empresa"
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                        className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                     />
                     
                     <div className="mt-6 p-4 rounded-xl bg-red-500/5 border border-red-500/10 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -159,13 +159,13 @@ export default function Profile() {
             {/* Leave Organization Modal */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-red-500/10">
+                    <div className="bg-popover border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-red-500/10">
                         <div className="flex items-center gap-4 mb-4">
                             <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
                                 <AlertTriangle className="w-6 h-6 text-red-400" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-white">¿Salir de la organización?</h3>
+                                <h3 className="text-xl font-bold text-foreground">¿Salir de la organización?</h3>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Esta acción es irreversible. Perderás el acceso a todos los datos y escaneos asociados.
                                 </p>
@@ -189,7 +189,7 @@ export default function Profile() {
                                 type="button"
                                 onClick={() => !leaving && setShowModal(false)}
                                 disabled={leaving}
-                                className="flex-1 py-2.5 rounded-xl border border-white/10 text-white font-medium hover:bg-white/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-foreground/5 transition-colors disabled:opacity-50"
                             >
                                 Cancelar
                             </button>

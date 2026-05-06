@@ -11,10 +11,10 @@ const sections = [
         id: 'uso-aceptable',
         icon: Globe,
         title: '1. Uso Aceptable',
-        content: `ScanOps es una herramienta de ciberseguridad diseñada exclusivamente para el análisis legítimo de seguridad web. Al utilizar este servicio, usted acepta y se compromete a:
+        content: `Vigia es una herramienta de ciberseguridad diseñada exclusivamente para el análisis legítimo de seguridad web. Al utilizar este servicio, usted acepta y se compromete a:
 
 • **Escanear únicamente dominios de su propiedad** o dominios para los cuales tenga autorización expresa y documentada del propietario.
-• **No utilizar ScanOps para actividades ilegales**, incluyendo pero no limitado a: acceso no autorizado a sistemas, ataques de denegación de servicio, exfiltración de datos, o cualquier forma de hacking malicioso.
+• **No utilizar Vigia para actividades ilegales**, incluyendo pero no limitado a: acceso no autorizado a sistemas, ataques de denegación de servicio, exfiltración de datos, o cualquier forma de hacking malicioso.
 • **No utilizar los resultados de los escaneos** para explotar vulnerabilidades encontradas en sistemas de terceros.
 • **Informar responsablemente** cualquier vulnerabilidad descubierta al propietario legítimo del dominio afectado.
 
@@ -24,13 +24,13 @@ Cualquier uso que viole las leyes locales, nacionales o internacionales de ciber
         id: 'limitacion-responsabilidad',
         icon: Scale,
         title: '2. Limitación de Responsabilidad',
-        content: `ScanOps proporciona sus servicios de escaneo de seguridad "tal cual" y "según disponibilidad". En la máxima medida permitida por la ley:
+        content: `Vigia proporciona sus servicios de escaneo de seguridad "tal cual" y "según disponibilidad". En la máxima medida permitida por la ley:
 
 • **No garantizamos** que nuestros escaneos detecten todas las vulnerabilidades existentes en un sitio web. La ausencia de hallazgos no implica que un sistema sea completamente seguro.
 • **No somos responsables** de daños directos, indirectos, incidentales, consecuentes o punitivos que resulten del uso o la incapacidad de uso de nuestros servicios.
 • **No somos responsables** de interrupciones, caídas o degradación del rendimiento de los sitios web escaneados durante o después del proceso de escaneo.
 • **El usuario asume toda la responsabilidad** de las acciones tomadas basándose en los resultados de los escaneos.
-• **ScanOps no será responsable** por el uso indebido de la información proporcionada en los reportes de seguridad.
+• **Vigia no será responsable** por el uso indebido de la información proporcionada en los reportes de seguridad.
 
 Nuestra responsabilidad total no excederá el monto pagado por el usuario en los últimos 12 meses de servicio.`,
     },
@@ -62,7 +62,7 @@ Nuestra responsabilidad total no excederá el monto pagado por el usuario en los
         id: 'uso-prohibido',
         icon: AlertTriangle,
         title: '5. Uso Prohibido y Sanciones',
-        content: `Queda estrictamente prohibido utilizar ScanOps para:
+        content: `Queda estrictamente prohibido utilizar Vigia para:
 
 • **Escanear dominios sin autorización**: Esto constituye un delito en la mayoría de las jurisdicciones y puede resultar en responsabilidad penal.
 • **Realizar ataques**: Usar los hallazgos de seguridad para atacar, comprometer o dañar sistemas informáticos.
@@ -77,7 +77,7 @@ Nuestra responsabilidad total no excederá el monto pagado por el usuario en los
         id: 'planes-facturacion',
         icon: FileText,
         title: '6. Planes, Facturación y SLA',
-        content: `ScanOps ofrece tres niveles de servicio:
+        content: `Vigia ofrece tres niveles de servicio:
 
 • **Plan Free ($0/mes)**: 1 URL registrada, escaneos básicos, soporte por email.
 • **Plan Pro ($10/mes)**: Hasta 5 URLs registradas, escaneos avanzados, reportes con IA, soporte prioritario.
@@ -92,9 +92,9 @@ Nuestra responsabilidad total no excederá el monto pagado por el usuario en los
         id: 'propiedad-intelectual',
         icon: ScrollText,
         title: '7. Propiedad Intelectual',
-        content: `• **Motor de escaneo**: El motor de escaneo de ScanOps, sus algoritmos y metodologías son propiedad exclusiva de ScanOps.
+        content: `• **Motor de escaneo**: El motor de escaneo de Vigia, sus algoritmos y metodologías son propiedad exclusiva de Vigia.
 • **Reportes**: Los reportes generados son propiedad del usuario contratante y pueden ser utilizados internamente sin restricción.
-• **Marca**: El nombre ScanOps, su logo y diseño visual son marcas registradas. No pueden ser reproducidos sin autorización.
+• **Marca**: El nombre Vigia, su logo y diseño visual son marcas registradas. No pueden ser reproducidos sin autorización.
 • **Retroalimentación**: Cualquier sugerencia o mejora enviada por los usuarios podrá ser incorporada al producto sin obligación de compensación.`,
     },
     {
@@ -126,7 +126,7 @@ export default function TermsAndConditions() {
     return (
         <div className="min-h-screen gradient-bg">
             {/* Hero */}
-            <div className="relative overflow-hidden border-b border-white/10">
+            <div className="relative overflow-hidden border-b border-border">
                 <div className="absolute w-72 h-72 bg-blue-500/10 rounded-full blur-3xl top-10 left-10 animate-float" />
                 <div className="absolute w-96 h-96 bg-purple-500/8 rounded-full blur-3xl bottom-0 right-20 animate-float-slow" />
 
@@ -144,7 +144,7 @@ export default function TermsAndConditions() {
                         Términos y Condiciones
                     </h1>
                     <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                        Al utilizar ScanOps, usted acepta estos términos que regulan
+                        Al utilizar Vigia, usted acepta estos términos que regulan
                         el uso responsable de nuestra plataforma de ciberseguridad.
                     </p>
                     <p className="text-xs text-muted-foreground mt-4">
@@ -178,7 +178,7 @@ export default function TermsAndConditions() {
                             >
                                 <button
                                     onClick={() => toggleSection(section.id)}
-                                    className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-colors text-left"
+                                    className="w-full flex items-center gap-4 p-5 hover:bg-foreground/5 transition-colors text-left"
                                     id={`terms-section-${section.id}`}
                                 >
                                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
@@ -218,7 +218,7 @@ export default function TermsAndConditions() {
                 <div className="mt-12 glass-card rounded-xl p-6 text-center">
                     <ShieldCheck className="w-8 h-8 text-blue-400 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                        Al crear una cuenta en ScanOps, confirmas que has leído, comprendido y aceptas
+                        Al crear una cuenta en Vigia, confirmas que has leído, comprendido y aceptas
                         estos Términos y Condiciones en su totalidad.
                     </p>
                     <Link

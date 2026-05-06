@@ -24,7 +24,7 @@ export default function Login() {
                         <ShieldCheck className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-4xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-gradient-text bg-[length:200%_auto]">
-                        ScanOps
+                        Vigia
                     </h1>
                     <p className="text-xl text-foreground/80 font-medium mb-2">
                         Ciberseguridad Inteligente para PYMES
@@ -57,7 +57,7 @@ export default function Login() {
                         <ShieldCheck className="w-7 h-7 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                        ScanOps
+                        Vigia
                     </h1>
                 </div>
 
@@ -76,7 +76,7 @@ export default function Login() {
                                     card: 'bg-transparent shadow-none p-0 w-full [&>div]:space-y-4',
                                     headerTitle: 'hidden',
                                     headerSubtitle: 'hidden',
-                                    footer: '!mt-6 !pt-4 !border-t !border-white/5',
+                                    footer: '!mt-6 !pt-4 !border-t !border-border',
                                 },
                             }}
                         />

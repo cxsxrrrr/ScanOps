@@ -55,7 +55,7 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
 
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
-        'ScanOpsTitle',
+        'VigiaTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
         fontSize=20,
@@ -64,7 +64,7 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
         spaceAfter=4,
     )
     subtitle_style = ParagraphStyle(
-        'ScanOpsSubTitle',
+        'VigiaSubTitle',
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=9,
@@ -94,7 +94,7 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
     header_table = Table(
         [[
             Paragraph('Reporte de Auditoria Web', title_style),
-            Paragraph('SCANOPS', subtitle_style),
+            Paragraph('VIGIA', subtitle_style),
         ]],
         colWidths=[5.8 * inch, 1.0 * inch],
     )
@@ -217,7 +217,7 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
     findings_table.setStyle(TableStyle(base_style))
     story.append(findings_table)
     story.append(Spacer(1, 8))
-    story.append(Paragraph('Generado por ScanOps', ParagraphStyle(
+    story.append(Paragraph('Generado por Vigia', ParagraphStyle(
         'Footer',
         parent=styles['Normal'],
         alignment=1,

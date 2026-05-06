@@ -1,5 +1,5 @@
 """
-User and Organization models for ScanOps.
+User and Organization models for Vigia.
 """
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -11,6 +11,12 @@ PLAN_LIMITS = {
     'free': 1,
     'pro': 5,
     'ultimate': 10,
+}
+
+PLAN_MEMBER_LIMITS = {
+    'free': 1,
+    'pro': 5,
+    'ultimate': 15,
 }
 
 
@@ -43,6 +49,11 @@ class Organization(models.Model):
     def plan_url_limit(self):
         """Return the URL limit for the current plan."""
         return PLAN_LIMITS.get(self.plan, 1)
+
+    @property
+    def member_limit(self):
+        """Return the member limit for the current plan."""
+        return PLAN_MEMBER_LIMITS.get(self.plan, 1)
 
     def sync_url_limit(self):
         """Sync url_limit field to match the current plan."""

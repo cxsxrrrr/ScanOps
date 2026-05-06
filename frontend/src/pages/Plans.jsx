@@ -17,7 +17,7 @@ const plans = [
         gradient: 'from-gray-500 to-gray-600',
         badgeClass: 'plan-badge-free',
         glowClass: '',
-        borderClass: 'border-white/10',
+        borderClass: 'border-border',
         features: [
             { text: '1 URL registrada', icon: Globe },
             { text: 'Escaneos básicos', icon: ScanSearch },
@@ -175,10 +175,10 @@ export default function Plans() {
                                 disabled={isCurrent}
                                 className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 ${
                                     isCurrent
-                                        ? 'bg-white/5 text-muted-foreground cursor-not-allowed border border-white/10'
+                                        ? 'bg-foreground/5 text-muted-foreground cursor-not-allowed border border-border'
                                         : isUpgrade
                                             ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
-                                            : 'glass hover:bg-white/10 text-foreground'
+                                            : 'glass hover:bg-foreground/10 text-foreground'
                                 }`}
                             >
                                 {isCurrent ? (

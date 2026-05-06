@@ -102,7 +102,7 @@ export default function Report() {
                     <button
                         onClick={() => handleDownload('excel', 'xlsx')}
                         disabled={downloading}
-                        className="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors text-sm font-medium flex items-center gap-2"
+                        className="px-4 py-2 rounded-lg glass hover:bg-foreground/10 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                         <Download className="w-4 h-4" /> Excel
                     </button>
@@ -137,14 +137,14 @@ export default function Report() {
                 <button
                     onClick={() => setActiveTab('technical')}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-            ${activeTab === 'technical' ? 'gradient-primary text-white' : 'hover:bg-white/5'}`}
+            ${activeTab === 'technical' ? 'gradient-primary text-white' : 'hover:bg-foreground/5'}`}
                 >
                     🔍 Reporte Técnico
                 </button>
                 <button
                     onClick={() => setActiveTab('executive')}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-            ${activeTab === 'executive' ? 'gradient-primary text-white' : 'hover:bg-white/5'}`}
+            ${activeTab === 'executive' ? 'gradient-primary text-white' : 'hover:bg-foreground/5'}`}
                 >
                     📋 Resumen Ejecutivo
                 </button>
@@ -165,7 +165,7 @@ export default function Report() {
                         report.findings.map((finding) => (
                             <div
                                 key={finding.id}
-                                className="glass rounded-xl p-5 border-l-4 hover:bg-white/5 transition-colors"
+                                className="glass rounded-xl p-5 border-l-4 hover:bg-foreground/5 transition-colors"
                                 style={{
                                     borderLeftColor:
                                         finding.severity === 'CRITICAL' ? '#d946ef' :
@@ -192,7 +192,7 @@ export default function Report() {
                                     </div>
                                 )}
                                 {finding.evidence && (
-                                    <div className="mt-2 p-2 rounded bg-white/5 text-xs font-mono text-muted-foreground">
+                                    <div className="mt-2 p-2 rounded bg-foreground/5 text-xs font-mono text-muted-foreground">
                                         {finding.evidence}
                                     </div>
                                 )}
@@ -204,7 +204,7 @@ export default function Report() {
                 <div className="glass rounded-xl p-6">
                     {report.executive_summary ? (
                         <div
-                            className="prose prose-invert prose-sm max-w-none"
+                            className="prose prose-sm max-w-none"
                             dangerouslySetInnerHTML={{
                                 __html: report.executive_summary.content
                                     .replace(/\n/g, '<br>')

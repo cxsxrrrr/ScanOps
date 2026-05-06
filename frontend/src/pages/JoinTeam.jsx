@@ -120,7 +120,7 @@ export default function JoinTeam() {
                 </div>
 
                 {/* Org info card */}
-                <div className="rounded-xl bg-white/5 border border-white/10 p-5 space-y-3">
+                <div className="rounded-xl bg-foreground/5 border border-border p-5 space-y-3">
                     <h2 className="text-lg font-semibold text-center">{info?.organization_name}</h2>
                     <div className="flex justify-center gap-6 text-sm">
                         <div className="text-center">
@@ -170,7 +170,7 @@ export default function JoinTeam() {
                                     sessionStorage.setItem('pendingInvite', token)
                                     navigate('/login')
                                 }}
-                                className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium hover:bg-white/10 transition-colors"
+                                className="flex-1 py-3 rounded-xl bg-foreground/5 border border-border text-white font-medium hover:bg-foreground/10 transition-colors"
                             >
                                 Iniciar Sesión
                             </button>

@@ -124,8 +124,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'ScanOps API',
-    'DESCRIPTION': 'Documentacion automatica del backend ScanOps.',
+    'TITLE': 'Vigia API',
+    'DESCRIPTION': 'Documentacion automatica del backend Vigia.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

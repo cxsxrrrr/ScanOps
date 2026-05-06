@@ -31,6 +31,7 @@ class EmailLog(models.Model):
     TYPE_CHOICES = [
         ('scheduled', 'Scheduled Report'),
         ('alert', 'High Severity Alert'),
+        ('manual', 'Manual Report'),
     ]
 
     STATUS_CHOICES = [

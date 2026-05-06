@@ -145,7 +145,8 @@ export default function Settings() {
         }
     }
 
-    const canInvite = org && org.member_count < org.member_limit
+    const visibleMemberCount = members.length
+    const canInvite = org && visibleMemberCount < org.member_limit
     const isFree = org?.plan === 'free'
 
     return (
@@ -168,15 +169,15 @@ export default function Settings() {
                         Equipo
                     </h2>
                     {org && (
-                        <span className="text-xs text-muted-foreground bg-white/5 px-3 py-1 rounded-full">
-                            {org.member_count} / {org.member_limit} miembros
+                        <span className="text-xs text-muted-foreground bg-foreground/5 px-3 py-1 rounded-full">
+                            {visibleMemberCount} / {org.member_limit} miembros
                         </span>
                     )}
                 </div>
 
                 {/* Members list */}
                 {members.length > 0 ? (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border">
                         {members.map((m) => (
                             <div key={m.id} className="py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -210,7 +211,7 @@ export default function Settings() {
                 )}
 
                 {/* Invite link section */}
-                <div className="pt-2 border-t border-white/5">
+                <div className="pt-2 border-t border-border">
                     {isFree ? (
                         <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/10">
                             <Crown className="w-5 h-5 text-amber-400 flex-shrink-0" />
@@ -259,7 +260,7 @@ export default function Settings() {
                                     {invitations.map((inv) => (
                                         <div
                                             key={inv.id}
-                                            className={`flex items-center justify-between p-3 rounded-lg bg-white/5 ${
+                                            className={`flex items-center justify-between p-3 rounded-lg bg-foreground/5 ${
                                                 !inv.is_valid ? 'opacity-50' : ''
                                             }`}
                                         >
@@ -282,7 +283,7 @@ export default function Settings() {
                                                 {inv.is_valid && (
                                                     <button
                                                         onClick={() => copyToClipboard(inv.token)}
-                                                        className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                        className="p-2 rounded-lg hover:bg-foreground/10 transition-colors"
                                                         title="Copiar enlace"
                                                     >
                                                         {copied === inv.token ? (
@@ -318,7 +319,7 @@ export default function Settings() {
                     Notificaciones por Email
                 </h2>
 
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-foreground/5">
                     <div>
                         <p className="font-medium">Reportes periódicos</p>
                         <p className="text-sm text-muted-foreground">Recibir resúmenes por correo</p>
@@ -329,7 +330,7 @@ export default function Settings() {
                         aria-checked={config.enabled}
                         aria-label="Activar reportes periódicos"
                         onClick={() => setConfig({ ...config, enabled: !config.enabled })}
-                        className={`w-12 h-6 rounded-full transition-colors duration-200 relative ${config.enabled ? 'bg-blue-500' : 'bg-white/20'}`}
+                        className={`w-12 h-6 rounded-full transition-colors duration-200 relative ${config.enabled ? 'bg-blue-500' : 'bg-foreground/20'}`}
                     >
                         <div
                             className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all duration-200 shadow-sm ${config.enabled ? 'left-[26px]' : 'left-0.5'
@@ -343,7 +344,7 @@ export default function Settings() {
                     <select
                         value={config.frequency}
                         onChange={(e) => setConfig({ ...config, frequency: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm appearance-none cursor-pointer"
+                        className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm appearance-none cursor-pointer"
                         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                     >
                         <option value="daily">Diario</option>
@@ -439,7 +440,7 @@ export default function Settings() {
                         No hay correos enviados aún.
                     </p>
                 ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-border max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                         {logs.map((log) => (
                             <div key={log.id} className="py-3 flex items-center justify-between">
                                 <div>

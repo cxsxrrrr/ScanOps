@@ -19,7 +19,7 @@ export default function Register() {
                         <ShieldCheck className="w-7 h-7 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                        Crear Cuenta en ScanOps
+                        Crear Cuenta en Vigia
                     </h1>
                     <p className="text-muted-foreground mt-2">
                         Protege tus sitios web con escaneos de seguridad inteligentes
@@ -42,7 +42,7 @@ export default function Register() {
                                 className={`w-5 h-5 rounded flex items-center justify-center border transition-all duration-200 flex-shrink-0 ${
                                     termsAccepted
                                         ? 'gradient-primary border-transparent shadow-lg shadow-blue-500/25'
-                                        : 'border-white/20 bg-white/5 hover:border-white/40'
+                                        : 'border-border bg-foreground/5 hover:border-foreground/40'
                                 }`}
                             >
                                 {termsAccepted && <Check className="w-3 h-3 text-white" />}
@@ -60,7 +60,7 @@ export default function Register() {
                                 Términos y Condiciones
                             </Link>
                             <span className="text-muted-foreground">
-                                {' '}de uso de ScanOps, incluyendo las políticas de uso
+                                {' '}de uso de Vigia, incluyendo las políticas de uso
                                 responsable de la herramienta de ciberseguridad.
                             </span>
                         </div>
@@ -91,7 +91,7 @@ export default function Register() {
                                     card: 'bg-transparent shadow-none p-0 w-full [&>div]:space-y-4',
                                     headerTitle: 'hidden',
                                     headerSubtitle: 'hidden',
-                                    footer: '!mt-6 !pt-4 !border-t !border-white/5',
+                                    footer: '!mt-6 !pt-4 !border-t !border-border',
                                 },
                             }}
                         />

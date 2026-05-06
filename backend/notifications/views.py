@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from .models import NotificationConfig, EmailLog
 from .serializers import NotificationConfigSerializer, EmailLogSerializer
+from .tasks import send_manual_report
 
 
 @api_view(['GET', 'PUT'])
@@ -38,3 +39,15 @@ def email_logs(request):
     logs = EmailLog.objects.filter(organization=request.user.organization)[:50]
     serializer = EmailLogSerializer(logs, many=True)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def send_report(request):
+    """Manually send a report email to all organization members."""
+    if not request.user.organization:
+        return Response({'detail': 'No organization.'}, status=400)
+
+    send_manual_report.delay(request.user.organization.id)
+
+    return Response({'detail': 'Reporte en proceso de envío.'}, status=status.HTTP_200_OK)

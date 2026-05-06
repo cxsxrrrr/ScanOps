@@ -191,7 +191,7 @@ export default function Dashboard() {
                                 {urlsUsed}/{urlLimit}
                             </span>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div className="w-full h-2 rounded-full bg-foreground/10 overflow-hidden">
                             <div
                                 className={`progress-bar-fill ${usagePercent >= 100 ? '!bg-red-500' : ''}`}
                                 style={{ width: `${usagePercent}%` }}
@@ -225,7 +225,7 @@ export default function Dashboard() {
                     <div className="space-y-3">
                         <Link
                             to="/urls"
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-foreground/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
                                 <Globe className="w-5 h-5 text-blue-400" />
@@ -235,7 +235,7 @@ export default function Dashboard() {
                         </Link>
                         <Link
                             to="/scans"
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-foreground/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
                                 <ScanSearch className="w-5 h-5 text-purple-400" />
@@ -245,7 +245,7 @@ export default function Dashboard() {
                         </Link>
                         <Link
                             to="/plans"
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-foreground/5 transition-colors group"
                         >
                             <div className="flex items-center gap-3">
                                 <Sparkles className="w-5 h-5 text-amber-400" />
@@ -274,7 +274,7 @@ export default function Dashboard() {
                                 <Link
                                     key={scan.id}
                                     to={`/scans/${scan.id}/report`}
-                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
+                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-foreground/5 transition-colors"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className={`w-2 h-2 rounded-full ${getStatusColor(scan.status)} bg-current`} />

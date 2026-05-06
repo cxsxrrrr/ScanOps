@@ -6,6 +6,8 @@ from .models import User, Organization, PLAN_LIMITS
 class OrganizationSerializer(serializers.ModelSerializer):
     """Serializer for Organization model."""
     user_count = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
+    member_limit = serializers.ReadOnlyField()
     plan_url_limit = serializers.SerializerMethodField()
     urls_used = serializers.SerializerMethodField()
 
@@ -13,14 +15,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = [
             'id', 'name', 'plan', 'url_limit', 'plan_url_limit',
-            'urls_used', 'user_count', 'created_at',
+            'urls_used', 'user_count', 'member_count', 'member_limit', 'created_at',
         ]
         read_only_fields = [
             'id', 'plan', 'url_limit', 'plan_url_limit',
-            'urls_used', 'user_count', 'created_at',
+            'urls_used', 'user_count', 'member_count', 'member_limit', 'created_at',
         ]
 
     def get_user_count(self, obj):
+        return obj.users.count()
+
+    def get_member_count(self, obj):
         return obj.users.count()
 
     def get_plan_url_limit(self, obj):
