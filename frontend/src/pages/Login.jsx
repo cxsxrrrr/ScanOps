@@ -1,199 +1,103 @@
 import { SignIn } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck, FileText } from 'lucide-react'
-import { useTheme } from '../hooks/useTheme'
-import { useState } from 'react'
-import TermsModal from '../components/TermsModal'
-
-/* ── Shared Clerk appearance tokens ── */
-const clerkAppearance = (isDark) => ({
-    elements: {
-        rootBox: 'w-full',
-        card: 'bg-transparent shadow-none p-0 w-full',
-        headerTitle: 'hidden',
-        headerSubtitle: 'hidden',
-
-        /* Social buttons */
-        socialButtonsBlockButton: isDark
-            ? 'bg-white/5 border border-white/10 text-foreground hover:bg-white/10 transition-all font-medium py-3'
-            : 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 transition-all font-medium py-3',
-        socialButtonsBlockButtonText: 'font-medium',
-
-        /* Primary CTA */
-        formButtonPrimary: isDark
-            ? 'bg-white text-black hover:bg-gray-200 border-0 shadow-none font-semibold transition-colors py-3'
-            : 'bg-black text-white hover:bg-gray-800 border-0 shadow-none font-semibold transition-colors py-3',
-
-        /* Inputs */
-        formFieldInput: isDark
-            ? 'bg-transparent border-white/10 text-foreground placeholder:text-muted-foreground focus:border-white focus:ring-0 transition-colors py-3'
-            : 'bg-transparent border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-black focus:ring-0 transition-colors py-3',
-
-        /* Labels */
-        formFieldLabel: isDark
-            ? 'text-foreground font-medium'
-            : 'text-gray-900 font-medium',
-
-        /* Divider */
-        dividerLine: isDark ? 'bg-white/10' : 'bg-gray-200',
-        dividerText: isDark ? 'text-muted-foreground' : 'text-gray-500',
-
-        /* Footer links */
-        footerActionLink: 'text-primary hover:text-primary/80 font-medium transition-colors',
-        footerActionText: isDark ? 'text-muted-foreground' : 'text-gray-500',
-
-        /* Identity preview (email step) */
-        identityPreview: isDark
-            ? 'bg-white/5 border-white/10'
-            : 'bg-gray-50 border border-gray-200',
-        identityPreviewEditButton: 'text-primary hover:text-primary/80',
-
-        /* Password toggle */
-        formFieldInputShowPasswordButton: isDark
-            ? 'text-white/50 hover:text-white/80'
-            : 'text-gray-400 hover:text-gray-600',
-
-        /* Alert / error messages */
-        alert: isDark
-            ? 'bg-red-500/10 border-red-500/20 text-red-400'
-            : 'bg-red-50 border border-red-200 text-red-600',
-
-        /* Form field error */
-        formFieldErrorText: 'text-red-500 text-xs mt-1',
-    },
-})
+import { ShieldCheck, ArrowRight, Scan, Zap, Brain, Lock, ScrollText } from 'lucide-react'
 
 export default function Login() {
-    const { isDark } = useTheme()
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [termsAccepted, setTermsAccepted] = useState(false)
-
     return (
-        <div className="min-h-screen flex w-full">
-            {/* Left panel — login form */}
-            <div className={`flex-1 lg:w-1/2 flex flex-col justify-center items-center p-8 relative ${isDark ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
-                {/* Language / Theme toggle placeholder (Optional top right alignment in left panel) */}
-                <div className="absolute top-8 right-8 hidden sm:block">
-                    {/* Could place a language switcher here like in the image */}
-                </div>
+        <div className="min-h-screen flex gradient-bg">
+            {/* Left panel — branding */}
+            <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden">
+                {/* Animated background orbs */}
+                <div className="absolute w-72 h-72 bg-blue-500/20 rounded-full blur-3xl top-20 left-10 animate-float" />
+                <div className="absolute w-96 h-96 bg-purple-500/15 rounded-full blur-3xl bottom-20 right-10 animate-float-slow" />
+                <div className="absolute w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl top-1/2 left-1/2 animate-float-delayed" />
 
-                <div className="w-full max-w-[400px]">
-                    {/* Logo */}
-                    <div className="flex items-center gap-2 mb-10">
-                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                            <ShieldCheck className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight">AuditWeb</span>
+                {/* Grid pattern overlay */}
+                <div className="absolute inset-0 opacity-[0.03]"
+                    style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                    }}
+                />
+
+                <div className="relative z-10 max-w-lg text-center">
+                    <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/30 animate-pulse-glow">
+                        <ShieldCheck className="w-10 h-10 text-white" />
                     </div>
-
-                    {/* Welcome Text */}
-                    <h1 className="text-3xl font-semibold mb-2">Bienvenido!</h1>
-                    <p className="text-muted-foreground mb-8 text-sm">
-                        Inicia sesión en AuditWeb para continuar.
+                    <h1 className="text-4xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-gradient-text bg-[length:200%_auto]">
+                        Vigia
+                    </h1>
+                    <p className="text-xl text-foreground/80 font-medium mb-2">
+                        Ciberseguridad Inteligente para PYMES
+                    </p>
+                    <p className="text-muted-foreground mb-10">
+                        Escanea, analiza y protege tus sitios web con tecnología de inteligencia artificial.
                     </p>
 
-                    {/* Clerk SignIn Component with Verification Overlay */}
-                    <div className="mb-6 relative">
-                        {!termsAccepted && (
-                            <div className="absolute inset-0 z-10 bg-background/40 backdrop-blur-[3px] rounded-xl flex flex-col items-center justify-center border border-white/5">
-                                <div className="bg-card border border-border p-6 rounded-xl shadow-2xl text-center max-w-[85%] animate-in zoom-in-95 duration-300">
-                                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                                        <FileText className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <h3 className="text-base font-semibold text-foreground mb-2">Términos y Condiciones</h3>
-                                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-                                        Por favor, lee y acepta nuestros términos de servicio y políticas de privacidad para acceder a la plataforma.
-                                    </p>
-                                    <button
-                                        onClick={() => setIsModalOpen(true)}
-                                        className="w-full bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/25"
-                                    >
-                                        Revisar y Aceptar
-                                    </button>
-                                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {[
+                            { icon: Scan, label: 'Escaneos Automatizados', desc: 'Detecta vulnerabilidades en minutos' },
+                            { icon: Brain, label: 'Reportes con IA', desc: 'Análisis ejecutivos generados por IA' },
+                            { icon: Zap, label: 'Monitoreo Continuo', desc: 'Protección 24/7 de tus activos' },
+                            { icon: Lock, label: '7+ Checks de Seguridad', desc: 'Headers, SSL, Cookies y más' },
+                        ].map((feature) => (
+                            <div key={feature.label} className="glass-card rounded-xl p-4 text-left hover:scale-[1.02] transition-transform">
+                                <feature.icon className="w-6 h-6 text-blue-400 mb-2" />
+                                <div className="text-sm font-semibold">{feature.label}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">{feature.desc}</div>
                             </div>
-                        )}
-
-                        <div className={`transition-all duration-500 ${!termsAccepted ? 'opacity-30 pointer-events-none select-none blur-[2px]' : ''}`}>
-                            <SignIn
-                                routing="hash"
-                                signUpUrl="/register"
-                                appearance={clerkAppearance(isDark)}
-                            />
-                        </div>
+                        ))}
                     </div>
+                </div>
+            </div>
 
-                    {/* Terms and conditions text */}
-                    <div className="mt-8 text-center border-t border-border pt-6">
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                            Al iniciar sesión o crear una cuenta, confirmas que has leído y aceptado nuestros{' '}
-                            <button onClick={() => setIsModalOpen(true)} className="underline hover:text-foreground transition-colors">
-                                Términos y Condiciones
-                            </button>{' '}
-                            y nuestra{' '}
-                            <button onClick={() => setIsModalOpen(true)} className="underline hover:text-foreground transition-colors">
-                                Política de Privacidad
-                            </button>.
+            {/* Right panel — login form */}
+            <div className="flex-1 flex flex-col justify-center items-center p-8">
+                <div className="lg:hidden mb-8 text-center">
+                    <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4">
+                        <ShieldCheck className="w-7 h-7 text-white" />
+                    </div>
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Vigia
+                    </h1>
+                </div>
+
+                <div className="w-full max-w-lg">
+                    <div className="glass-strong rounded-2xl p-10">
+                        <h2 className="text-2xl font-bold text-center mb-2">Bienvenido de vuelta</h2>
+                        <p className="text-muted-foreground text-center mb-8 text-sm">
+                            Inicia sesión para acceder a tu panel de seguridad
                         </p>
+                        <SignIn
+                            routing="hash"
+                            signUpUrl="/register"
+                            appearance={{
+                                elements: {
+                                    rootBox: 'w-full',
+                                    card: 'bg-transparent shadow-none p-0 w-full [&>div]:space-y-4',
+                                    headerTitle: 'hidden',
+                                    headerSubtitle: 'hidden',
+                                    footer: '!mt-6 !pt-4 !border-t !border-border',
+                                },
+                            }}
+                        />
                     </div>
+
+                    <p className="text-center mt-6 text-sm text-muted-foreground">
+                        ¿No tienes cuenta?{' '}
+                        <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium inline-flex items-center gap-1">
+                            Regístrate <ArrowRight className="w-3 h-3" />
+                        </Link>
+                    </p>
+
+                    {/* Terms link */}
+                    <p className="text-center mt-3 text-xs text-muted-foreground">
+                        <Link to="/terms" className="hover:text-foreground transition-colors inline-flex items-center gap-1">
+                            <ScrollText className="w-3 h-3" />
+                            Términos y Condiciones
+                        </Link>
+                    </p>
                 </div>
             </div>
-
-            {/* Right panel — visual/branding */}
-            <div className="hidden lg:flex lg:w-1/2 bg-[#09090b] text-white flex-col justify-center relative overflow-hidden">
-                {/* Background glow effects */}
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/20 rounded-full blur-[100px] pointer-events-none" />
-
-                <div className="relative z-10 w-full max-w-lg mx-auto px-12 flex flex-col items-center">
-                    {/* Text block resembling the image */}
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl sm:text-5xl font-medium tracking-tight leading-[1.1] mb-6">
-                            +10,000 auditorías.<br />
-                            <span className="text-white/60">Reportes con IA.</span>
-                        </h2>
-
-                        {/* Join Now Badge */}
-                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-primary/20 border border-purple-500/30 px-4 py-2 rounded-full backdrop-blur-md">
-                            <span className="text-sm font-medium text-purple-200">Únete ahora</span>
-                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></div>
-                        </div>
-                    </div>
-
-                    {/* 3D-like graphic block resembling the image */}
-                    <div className="relative w-72 h-72">
-                        {/* Orbit rings */}
-                        <div className="absolute inset-[-20%] border border-white/5 rounded-[100%] rotate-x-65 rotate-z-45"></div>
-                        <div className="absolute inset-[-40%] border border-white/5 rounded-[100%] rotate-x-65 rotate-z-45"></div>
-
-                        {/* Center cube/shield representation */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="relative w-40 h-56 bg-gradient-to-b from-white/10 to-transparent border border-white/10 rounded-2xl backdrop-blur-xl flex flex-col items-center justify-center shadow-2xl shadow-primary/20 overflow-hidden transform -rotate-6 transition-transform hover:rotate-0 duration-500">
-                                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
-                                <ShieldCheck className="w-16 h-16 text-primary mb-4 opacity-90" />
-                                <div className="h-2 w-16 bg-white/10 rounded-full mb-2"></div>
-                                <div className="h-2 w-10 bg-white/10 rounded-full"></div>
-
-                                {/* Scanning line animation */}
-                                <div className="absolute top-0 left-0 w-full h-1 bg-primary/50 blur-[2px] scan-pulse"></div>
-                            </div>
-                        </div>
-
-                        {/* Decorator dots */}
-                        <div className="absolute top-[10%] left-[20%] w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
-                        <div className="absolute bottom-[20%] right-[10%] w-2 h-2 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.8)]"></div>
-                    </div>
-                </div>
-            </div>
-
-            <TermsModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onAccept={() => {
-                    setTermsAccepted(true)
-                    setIsModalOpen(false)
-                }}
-            />
         </div>
     )
 }

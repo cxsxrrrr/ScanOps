@@ -18,6 +18,26 @@ class URLAsset(models.Model):
         related_name='url_assets',
     )
     url = models.URLField(max_length=2048)
+    ownership_challenge_token = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    ownership_failure_reason = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    ownership_verification_method = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    ownership_status = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+    )
     last_scan_status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default='pending'
     )

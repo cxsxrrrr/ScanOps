@@ -48,8 +48,9 @@ def run_scan(self, scan_id):
 
         # Update URL asset status
         url_asset = scan.url_asset
+        critical_count = scan.findings.filter(severity='CRITICAL').count()
         high_count = scan.findings.filter(severity='HIGH').count()
-        if high_count > 0:
+        if critical_count > 0 or high_count > 0:
             url_asset.last_scan_status = 'warning'
         else:
             url_asset.last_scan_status = 'ok'
@@ -63,7 +64,7 @@ def run_scan(self, scan_id):
         generate_ai_summary.delay(scan_id)
 
         # Check for high-severity alerts
-        if high_count > 0:
+        if critical_count > 0 or high_count > 0:
             from notifications.tasks import send_high_severity_alert
             send_high_severity_alert.delay(scan_id)
 

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import api from '../lib/api'
-import { User, Building, Save, Loader2, CheckCircle2 } from 'lucide-react'
+import { User, Building, Save, Loader2, CheckCircle2, LogOut, AlertTriangle } from 'lucide-react'
 
 export default function Profile() {
     const { user } = useUser()
-    const [profile, setProfile] = useState({ first_name: '', last_name: '', organization_name: '' })
+    const [profile, setProfile] = useState({ first_name: '', last_name: '', organization_name: '', member_count: 1 })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
+    const [leaving, setLeaving] = useState(false)
+    const [leaveError, setLeaveError] = useState(null)
+    const [showModal, setShowModal] = useState(false)
 
     useEffect(() => { loadProfile() }, [])
 
@@ -18,6 +21,7 @@ export default function Profile() {
                 first_name: res.data.first_name || '',
                 last_name: res.data.last_name || '',
                 organization_name: res.data.organization?.name || '',
+                member_count: res.data.organization?.member_count || 1,
             })
         } catch (err) {
             console.error('Failed to load profile:', err)
@@ -42,11 +46,23 @@ export default function Profile() {
         }
     }
 
+    async function leaveOrganization() {
+        setLeaving(true)
+        setLeaveError(null)
+        try {
+            await api.post('/auth/team/leave/')
+            window.location.reload() // Reload app to clear old context
+        } catch (err) {
+            setLeaveError(err.response?.data?.detail || 'Error al intentar salir.')
+            setLeaving(false)
+        }
+    }
+
     return (
         <div className="max-w-2xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <User className="w-6 h-6 text-blue-500" />
+                    <User className="w-6 h-6 text-blue-400" />
                     Perfil
                 </h1>
                 <p className="text-muted-foreground text-sm mt-1">
@@ -62,7 +78,7 @@ export default function Profile() {
                         type="email"
                         value={user?.primaryEmailAddress?.emailAddress || ''}
                         disabled
-                        className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-muted-foreground text-sm cursor-not-allowed"
+                        className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border text-muted-foreground text-sm cursor-not-allowed"
                     />
                 </div>
 
@@ -73,7 +89,7 @@ export default function Profile() {
                             type="text"
                             value={profile.first_name}
                             onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                            className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                         />
                     </div>
                     <div>
@@ -82,14 +98,14 @@ export default function Profile() {
                             type="text"
                             value={profile.last_name}
                             onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                            className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                            className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                         />
                     </div>
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium mb-1.5 flex items-center gap-1.5">
-                        <Building className="w-4 h-4 text-purple-500" />
+                        <Building className="w-4 h-4 text-purple-400" />
                         Organización
                     </label>
                     <input
@@ -97,14 +113,34 @@ export default function Profile() {
                         value={profile.organization_name}
                         onChange={(e) => setProfile({ ...profile, organization_name: e.target.value })}
                         placeholder="Nombre de tu empresa"
-                        className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
+                        className="w-full px-4 py-2.5 rounded-lg bg-foreground/5 border border-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors text-sm"
                     />
+                    
+                    <div className="mt-6 p-4 rounded-xl bg-red-500/5 border border-red-500/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-start gap-3 text-sm">
+                            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium text-red-300">Salir de la organización</p>
+                                <p className="text-muted-foreground text-xs mt-0.5">
+                                    Perderás el acceso a los datos ({profile.member_count} miembros actuales).
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowModal(true)}
+                            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Salir
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
                     <div>
                         {saved && (
-                            <span className="text-emerald-500 text-sm flex items-center gap-1">
+                            <span className="text-emerald-400 text-sm flex items-center gap-1">
                                 <CheckCircle2 className="w-4 h-4" /> Guardado exitosamente
                             </span>
                         )}
@@ -119,6 +155,57 @@ export default function Profile() {
                     </button>
                 </div>
             </form>
+
+            {/* Leave Organization Modal */}
+            {showModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-popover border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-red-500/10">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-foreground">¿Salir de la organización?</h3>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Esta acción es irreversible. Perderás el acceso a todos los datos y escaneos asociados.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-6">
+                            <p className="text-xs text-red-200 text-center">
+                                Quedarás sin organización temporalmente y podrás aceptar nuevas invitaciones de forma libre o crear la tuya propia cuando desees.
+                            </p>
+                        </div>
+
+                        {leaveError && (
+                            <p className="text-red-400 text-sm text-center mb-4 bg-red-500/10 p-2 rounded-lg">
+                                {leaveError}
+                            </p>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => !leaving && setShowModal(false)}
+                                disabled={leaving}
+                                className="flex-1 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-foreground/5 transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={leaveOrganization}
+                                disabled={leaving}
+                                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {leaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
+                                {leaving ? 'Saliendo...' : 'Confirmar Salida'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

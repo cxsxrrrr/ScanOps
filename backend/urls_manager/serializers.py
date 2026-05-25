@@ -4,6 +4,13 @@ from urllib.parse import urlparse
 from .models import URLAsset
 
 
+PLAN_NAMES = {
+    'free': 'Free',
+    'pro': 'Pro',
+    'ultimate': 'Ultimate',
+}
+
+
 class URLAssetSerializer(serializers.ModelSerializer):
     """Serializer for URLAsset model."""
 
@@ -32,14 +39,17 @@ class URLAssetSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        """Check URL limit for organization."""
+        """Check URL limit for organization based on current plan."""
         request = self.context.get('request')
         if request and not self.instance:
             org = request.user.organization
             if org:
                 current_count = URLAsset.objects.filter(organization=org).count()
                 if current_count >= org.url_limit:
+                    plan_name = PLAN_NAMES.get(org.plan, org.plan)
                     raise serializers.ValidationError(
-                        f'URL limit reached ({org.url_limit}). Upgrade your plan.'
+                        f'Has alcanzado el límite de URLs de tu plan {plan_name} '
+                        f'({org.url_limit} URL{"s" if org.url_limit > 1 else ""}). '
+                        f'Actualiza tu plan para agregar más URLs.'
                     )
         return attrs

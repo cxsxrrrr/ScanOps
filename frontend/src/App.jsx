@@ -1,17 +1,25 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { SignedIn, SignedOut } from '@clerk/clerk-react'
+import { useApiSetup } from './hooks/useApi'
 import DashboardLayout from './layouts/DashboardLayout'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import TermsAndConditions from './pages/TermsAndConditions'
 import Dashboard from './pages/Dashboard'
 import URLs from './pages/URLs'
 import ScanHistory from './pages/ScanHistory'
 import Report from './pages/Report'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import Plans from './pages/Plans'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import JoinTeam from './pages/JoinTeam'
 
 function App({ authEnabled = true }) {
+    if (authEnabled) {
+        useApiSetup()
+    }
+
     if (!authEnabled) {
         return (
             <div className="min-h-screen gradient-bg flex items-center justify-center p-6">
@@ -35,6 +43,8 @@ function App({ authEnabled = true }) {
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/terms" element={<TermsAndConditions />} />
+                    <Route path="/invite/:token" element={<JoinTeam />} />
                     <Route path="*" element={<Navigate to="/login" replace />} />
                 </Routes>
             </SignedOut>
@@ -47,10 +57,13 @@ function App({ authEnabled = true }) {
                         <Route path="urls" element={<URLs />} />
                         <Route path="scans" element={<ScanHistory />} />
                         <Route path="scans/:scanId/report" element={<Report />} />
+                        <Route path="plans" element={<Plans />} />
                         <Route path="profile" element={<Profile />} />
                         <Route path="settings" element={<Settings />} />
                         <Route path="admin" element={<AdminDashboard />} />
                     </Route>
+                    <Route path="/invite/:token" element={<JoinTeam />} />
+                    <Route path="/terms" element={<TermsAndConditions />} />
                     <Route path="/login" element={<Navigate to="/" replace />} />
                     <Route path="/register" element={<Navigate to="/" replace />} />
                     <Route path="*" element={<Navigate to="/" replace />} />

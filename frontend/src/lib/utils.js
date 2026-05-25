@@ -18,6 +18,7 @@ export function formatDate(dateString) {
 
 export function getSeverityColor(severity) {
   const colors = {
+    CRITICAL: 'severity-critical',
     HIGH: 'severity-high',
     MEDIUM: 'severity-medium',
     LOW: 'severity-low',
@@ -28,6 +29,7 @@ export function getSeverityColor(severity) {
 
 export function getSeverityLabel(severity) {
   const labels = {
+    CRITICAL: 'Crítico',
     HIGH: 'Alto',
     MEDIUM: 'Medio',
     LOW: 'Bajo',
@@ -38,14 +40,14 @@ export function getSeverityLabel(severity) {
 
 export function getStatusColor(status) {
   const colors = {
-    pending: 'text-yellow-400',
-    running: 'text-blue-400',
-    completed: 'text-green-400',
-    ok: 'text-green-400',
-    warning: 'text-amber-400',
-    error: 'text-red-400',
+    pending: 'text-yellow-500 dark:text-yellow-400',
+    running: 'text-blue-500 dark:text-blue-400',
+    completed: 'text-green-500 dark:text-green-400',
+    ok: 'text-green-500 dark:text-green-400',
+    warning: 'text-amber-500 dark:text-amber-400',
+    error: 'text-red-500 dark:text-red-400',
   }
-  return colors[status] || 'text-gray-400'
+  return colors[status] || 'text-gray-500 dark:text-gray-400'
 }
 
 export function getStatusLabel(status) {

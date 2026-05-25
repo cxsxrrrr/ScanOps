@@ -1,19 +1,38 @@
 """Serializers for accounts app."""
 from rest_framework import serializers
-from .models import User, Organization
+from .models import User, Organization, PLAN_LIMITS
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
     """Serializer for Organization model."""
     user_count = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
+    member_limit = serializers.ReadOnlyField()
+    plan_url_limit = serializers.SerializerMethodField()
+    urls_used = serializers.SerializerMethodField()
 
     class Meta:
         model = Organization
-        fields = ['id', 'name', 'plan', 'url_limit', 'user_count', 'created_at']
-        read_only_fields = ['id', 'plan', 'url_limit', 'user_count', 'created_at']
+        fields = [
+            'id', 'name', 'plan', 'url_limit', 'plan_url_limit',
+            'urls_used', 'user_count', 'member_count', 'member_limit', 'created_at',
+        ]
+        read_only_fields = [
+            'id', 'plan', 'url_limit', 'plan_url_limit',
+            'urls_used', 'user_count', 'member_count', 'member_limit', 'created_at',
+        ]
 
     def get_user_count(self, obj):
         return obj.users.count()
+
+    def get_member_count(self, obj):
+        return obj.users.count()
+
+    def get_plan_url_limit(self, obj):
+        return PLAN_LIMITS.get(obj.plan, 1)
+
+    def get_urls_used(self, obj):
+        return obj.url_assets.count()
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -26,8 +45,9 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'first_name', 'last_name', 'role',
             'organization', 'organization_name', 'date_joined',
+            'accepted_terms_at',
         ]
-        read_only_fields = ['id', 'email', 'role', 'date_joined']
+        read_only_fields = ['id', 'email', 'role', 'date_joined', 'accepted_terms_at']
 
     def update(self, instance, validated_data):
         org_name = validated_data.pop('organization_name', None)
@@ -47,5 +67,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'organization']
-        read_only_fields = ['id', 'email', 'role']
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'role',
+            'organization', 'accepted_terms_at',
+        ]
+        read_only_fields = ['id', 'email', 'role', 'accepted_terms_at']

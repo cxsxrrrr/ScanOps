@@ -5,7 +5,8 @@ from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from accounts.models import User, Organization
+from accounts.models import User, Organization, PLAN_LIMITS
+from accounts.serializers import OrganizationSerializer
 from scanner.models import Scan, Finding
 from notifications.models import EmailLog
 
@@ -33,13 +34,20 @@ def dashboard_metrics(request):
     total_findings = Finding.objects.count()
     high_findings = Finding.objects.filter(severity='HIGH').count()
 
+    # Plan distribution
+    plan_distribution = {}
+    for plan_key, _ in Organization.PLAN_CHOICES:
+        plan_distribution[plan_key] = Organization.objects.filter(plan=plan_key).count()
+
     return Response({
         'users': {
             'total': User.objects.count(),
             'active_last_30d': User.objects.filter(last_login__gte=last_30_days).count(),
+            'admins': User.objects.filter(role='admin').count(),
         },
         'organizations': {
             'total': Organization.objects.count(),
+            'by_plan': plan_distribution,
         },
         'scans': {
             'total': total_scans,
@@ -118,6 +126,70 @@ def user_list(request):
     """List all users (admin view)."""
     users = User.objects.select_related('organization').all().values(
         'id', 'email', 'first_name', 'last_name', 'role',
-        'organization__name', 'date_joined', 'last_login',
+        'organization__name', 'organization__plan',
+        'date_joined', 'last_login', 'accepted_terms_at',
     )
     return Response(list(users))
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def organization_list(request):
+    """List all organizations with plan info."""
+    orgs = Organization.objects.all()
+    serializer = OrganizationSerializer(orgs, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def update_org_plan(request, pk):
+    """Update an organization's plan (admin only)."""
+    try:
+        org = Organization.objects.get(pk=pk)
+    except Organization.DoesNotExist:
+        return Response(
+            {'detail': 'Organization not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    new_plan = request.data.get('plan')
+    if new_plan not in PLAN_LIMITS:
+        return Response(
+            {'detail': f'Invalid plan. Options: {", ".join(PLAN_LIMITS.keys())}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    org.set_plan(new_plan)
+    return Response({
+        'detail': f'Plan updated to {new_plan}.',
+        'organization': OrganizationSerializer(org).data,
+    })
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def update_user_role(request, pk):
+    """Update a user's role (admin only)."""
+    try:
+        user = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response(
+            {'detail': 'User not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    new_role = request.data.get('role')
+    if new_role not in dict(User.ROLE_CHOICES):
+        return Response(
+            {'detail': 'Invalid role. Options: user, admin'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user.role = new_role
+    user.save(update_fields=['role'])
+    return Response({
+        'detail': f'Role updated to {new_role}.',
+        'user_id': user.id,
+        'role': user.role,
+    })

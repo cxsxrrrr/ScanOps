@@ -2,16 +2,46 @@
 Core scan engine for passive security analysis.
 
 Performs non-intrusive checks: HTTP headers, SSL/TLS, cookies,
-information disclosure, and DNS configuration.
+information disclosure, DNS configuration, and extended vulnerability
+detection modules covering OWASP Top 10 and beyond.
+
+The engine crawls same-origin pages (up to MAX_PAGES) to discover
+login forms, signup pages, and other interesting endpoints that
+surface additional vulnerabilities.
 """
+import re
 import logging
 import socket
 import ssl
 import requests
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
+
+from scanner.checks import ALL_CHECKS
+from scanner.checks.subdomain_enum import discover_subdomains
+from scanner.checks.wordpress import check_wordpress
+from scanner.checks.tech_fingerprint import check_technologies
 
 logger = logging.getLogger('scanner')
+
+# Maximum number of same-origin pages to crawl
+MAX_PAGES = 10
+
+# Maximum subdomains to scan
+MAX_SUBDOMAIN_SCANS = 15
+
+# Paths commonly associated with authentication / sensitive functionality
+INTERESTING_PATH_KEYWORDS = [
+    'login', 'signin', 'sign-in', 'signup', 'sign-up', 'register',
+    'newaccount', 'account', 'auth', 'admin', 'dashboard', 'profile',
+    'upload', 'api', 'graphql', 'reset', 'password', 'forgot',
+]
+
+# Regex to extract same-origin links from HTML
+HREF_PATTERN = re.compile(
+    r'<a\s[^>]*href\s*=\s*["\']([^"\'#]+)["\']',
+    re.IGNORECASE,
+)
 
 
 class ScanEngine:
@@ -22,29 +52,47 @@ class ScanEngine:
         self.timeout = timeout
         self.findings = []
         self.parsed_url = urlparse(url)
+        self._session = requests.Session()
+        self._session.headers.update({'User-Agent': 'AuditoriaWeb-Scanner/1.0'})
 
     def run(self):
         """Execute all scan checks and return findings."""
         logger.info(f"Starting scan for: {self.url}")
 
         try:
-            response = requests.get(
+            response = self._session.get(
                 self.url,
                 timeout=self.timeout,
                 allow_redirects=True,
-                headers={'User-Agent': 'AuditoriaWeb-Scanner/1.0'},
                 verify=True,
             )
 
+            # Core passive checks (run only on the main page)
             self._check_security_headers(response)
             self._check_cookie_security(response)
             self._check_info_disclosure(response)
             self._check_mixed_content(response)
 
+            # Technology fingerprinting & vulnerability check
+            check_technologies(response, self.parsed_url, self.findings)
+
             if self.parsed_url.scheme == 'https':
                 self._check_ssl(self.parsed_url.hostname)
 
             self._check_dns_records(self.parsed_url.hostname)
+
+            # Extended checks on the main page
+            self._run_extended_checks(response, self.parsed_url)
+
+            # WordPress-specific checks
+            base_url = f'{self.parsed_url.scheme}://{self.parsed_url.netloc}'
+            check_wordpress(response, self._session, base_url, self.findings)
+
+            # Crawl same-origin pages and run extended checks on each
+            self._crawl_and_check(response)
+
+            # Discover and scan subdomains
+            self._discover_and_scan_subdomains()
 
         except requests.exceptions.SSLError as e:
             self.findings.append({
@@ -75,7 +123,101 @@ class ScanEngine:
             })
 
         logger.info(f"Scan complete for {self.url}: {len(self.findings)} findings")
+        self._deduplicate()
+        logger.info(f"After deduplication: {len(self.findings)} unique findings")
         return self.findings
+
+    # ------------------------------------------------------------------
+    # Extended checks & crawling
+    # ------------------------------------------------------------------
+
+    def _deduplicate(self):
+        """Remove duplicate findings, keeping the highest-severity instance."""
+        severity_rank = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3, 'INFO': 4}
+        seen = {}
+
+        for f in self.findings:
+            key = (f.get('title', ''), f.get('category', ''))
+            rank = severity_rank.get(f.get('severity', 'INFO'), 5)
+            if key not in seen or rank < seen[key][1]:
+                seen[key] = (f, rank)
+
+        self.findings = [entry[0] for entry in seen.values()]
+
+    def _run_extended_checks(self, response, parsed_url):
+        """Run all extended vulnerability check modules on a response."""
+        for check_fn in ALL_CHECKS:
+            try:
+                check_fn(response, parsed_url, self.findings)
+            except Exception as exc:
+                logger.warning(
+                    f"Check {check_fn.__name__} failed for {parsed_url.geturl()}: {exc}"
+                )
+
+    def _crawl_and_check(self, main_response):
+        """Discover same-origin pages and run extended checks on each."""
+        visited = {self.url.rstrip('/')}
+        to_visit = []
+
+        # Extract links from the main page
+        discovered = self._extract_links(main_response)
+
+        # Prioritize interesting paths (login, signup, admin, etc.)
+        prioritized = sorted(
+            discovered,
+            key=lambda u: any(kw in u.lower() for kw in INTERESTING_PATH_KEYWORDS),
+            reverse=True,
+        )
+
+        for link in prioritized:
+            normalized = link.rstrip('/')
+            if normalized not in visited:
+                to_visit.append(link)
+                visited.add(normalized)
+            if len(to_visit) >= MAX_PAGES - 1:  # -1 because main page already scanned
+                break
+
+        logger.info(f"Crawling {len(to_visit)} additional pages for {self.url}")
+
+        for page_url in to_visit:
+            try:
+                resp = self._session.get(
+                    page_url,
+                    timeout=self.timeout,
+                    allow_redirects=True,
+                    verify=True,
+                )
+                page_parsed = urlparse(page_url)
+                self._run_extended_checks(resp, page_parsed)
+                # Also check cookies on sub-pages
+                self._check_cookie_security(resp)
+            except requests.exceptions.RequestException as exc:
+                logger.warning(f"Failed to crawl {page_url}: {exc}")
+
+    def _extract_links(self, response):
+        """Extract same-origin links from HTML response body."""
+        links = set()
+        body = response.text[:200_000]
+
+        base_scheme = self.parsed_url.scheme
+        base_netloc = self.parsed_url.netloc
+
+        for href in HREF_PATTERN.findall(body):
+            absolute = urljoin(self.url, href)
+            parsed = urlparse(absolute)
+
+            # Only follow same-origin HTTP(S) links
+            if parsed.netloc == base_netloc and parsed.scheme in ('http', 'https'):
+                # Skip static assets
+                path_lower = parsed.path.lower()
+                if any(path_lower.endswith(ext) for ext in (
+                    '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg',
+                    '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map',
+                )):
+                    continue
+                links.add(f'{parsed.scheme}://{parsed.netloc}{parsed.path}')
+
+        return links
 
     def _check_security_headers(self, response):
         """Check for missing or misconfigured security headers."""
@@ -266,3 +408,154 @@ class ScanEngine:
 
         except Exception as e:
             logger.warning(f"DNS check error for {hostname}: {e}")
+
+    # ------------------------------------------------------------------
+    # Subdomain discovery & scanning
+    # ------------------------------------------------------------------
+
+    def _discover_and_scan_subdomains(self):
+        """Discover subdomains and run lightweight scans on each."""
+        hostname = self.parsed_url.hostname
+        if not hostname:
+            return
+
+        try:
+            subdomains = discover_subdomains(hostname)
+        except Exception as exc:
+            logger.warning(f"Subdomain discovery failed for {hostname}: {exc}")
+            return
+
+        if not subdomains:
+            logger.info(f"No subdomains found for {hostname}")
+            return
+
+        # Report discovered subdomains as an informational finding
+        sub_list = ', '.join(s['subdomain'] for s in subdomains[:MAX_SUBDOMAIN_SCANS])
+        self.findings.append({
+            'title': 'Subdomains Discovered',
+            'severity': 'INFO',
+            'category': 'subdomain',
+            'description': (
+                f'{len(subdomains)} subdomain(s) discovered via passive enumeration '
+                f'(Certificate Transparency and DNS resolution).'
+            ),
+            'recommendation': (
+                'Review all discovered subdomains. Remove DNS records for '
+                'decommissioned services. Ensure all subdomains follow '
+                'security best practices.'
+            ),
+            'evidence': f'Subdomains found: {sub_list}',
+        })
+
+        # Lightweight scan on each subdomain
+        for sub_info in subdomains[:MAX_SUBDOMAIN_SCANS]:
+            sub_host = sub_info['subdomain']
+            self._scan_subdomain(sub_host)
+
+    def _scan_subdomain(self, subdomain):
+        """Run a lightweight security scan on a discovered subdomain."""
+        prefix = f'[{subdomain}]'
+        scheme = 'https'
+        url = f'{scheme}://{subdomain}'
+
+        try:
+            resp = self._session.get(
+                url, timeout=self.timeout,
+                allow_redirects=True, verify=True,
+            )
+        except requests.exceptions.SSLError:
+            # Try HTTP fallback
+            try:
+                scheme = 'http'
+                url = f'{scheme}://{subdomain}'
+                resp = self._session.get(
+                    url, timeout=self.timeout,
+                    allow_redirects=True, verify=False,
+                )
+                self.findings.append({
+                    'title': f'{prefix} No Valid SSL Certificate',
+                    'severity': 'HIGH',
+                    'category': 'subdomain',
+                    'description': (
+                        f'Subdomain {subdomain} does not have a valid SSL/TLS '
+                        f'certificate. Connection fell back to HTTP.'
+                    ),
+                    'recommendation': (
+                        'Install a valid SSL certificate. Use services like '
+                        "Let's Encrypt for free certificates."
+                    ),
+                    'evidence': f'SSL connection failed for {subdomain}',
+                })
+            except requests.exceptions.RequestException:
+                logger.warning(f"Cannot reach subdomain {subdomain} over HTTP or HTTPS")
+                return
+        except requests.exceptions.RequestException as exc:
+            logger.warning(f"Cannot reach subdomain {subdomain}: {exc}")
+            return
+
+        headers = resp.headers
+
+        # Check HSTS
+        if 'Strict-Transport-Security' not in headers:
+            self.findings.append({
+                'title': f'{prefix} Missing HSTS Header',
+                'severity': 'MEDIUM',
+                'category': 'subdomain',
+                'description': f'Subdomain {subdomain} is missing the HSTS header.',
+                'recommendation': 'Add Strict-Transport-Security header.',
+                'evidence': f'No HSTS header on {url}',
+            })
+
+        # Check CSP
+        if 'Content-Security-Policy' not in headers:
+            self.findings.append({
+                'title': f'{prefix} Missing CSP Header',
+                'severity': 'LOW',
+                'category': 'subdomain',
+                'description': f'Subdomain {subdomain} is missing the CSP header.',
+                'recommendation': 'Add Content-Security-Policy header.',
+                'evidence': f'No CSP header on {url}',
+            })
+
+        # Check for exposed sensitive information
+        server = headers.get('Server', '')
+        powered_by = headers.get('X-Powered-By', '')
+        if server or powered_by:
+            tech = server or powered_by
+            self.findings.append({
+                'title': f'{prefix} Technology Disclosure',
+                'severity': 'LOW',
+                'category': 'subdomain',
+                'description': f'Subdomain {subdomain} reveals technology: {tech}',
+                'recommendation': 'Remove Server and X-Powered-By headers.',
+                'evidence': f'Technology header: {tech}',
+            })
+
+        # Check SSL certificate expiry (if HTTPS)
+        if scheme == 'https':
+            self._check_subdomain_ssl(subdomain, prefix)
+
+    def _check_subdomain_ssl(self, subdomain, prefix):
+        """Check SSL certificate expiry for a subdomain."""
+        try:
+            context = ssl.create_default_context()
+            with socket.create_connection((subdomain, 443), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=subdomain) as ssock:
+                    cert = ssock.getpeercert()
+                    not_after = ssl.cert_time_to_seconds(cert['notAfter'])
+                    days_left = (not_after - datetime.now().timestamp()) / 86400
+
+                    if days_left < 30:
+                        self.findings.append({
+                            'title': f'{prefix} SSL Certificate Expiring Soon',
+                            'severity': 'HIGH' if days_left < 7 else 'MEDIUM',
+                            'category': 'subdomain',
+                            'description': (
+                                f'SSL certificate for {subdomain} expires in '
+                                f'{int(days_left)} days.'
+                            ),
+                            'recommendation': 'Renew the SSL certificate.',
+                            'evidence': f"Expires: {cert['notAfter']}",
+                        })
+        except Exception as exc:
+            logger.warning(f"SSL check failed for subdomain {subdomain}: {exc}")

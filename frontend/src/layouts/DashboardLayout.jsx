@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
-import { useApiSetup } from '../hooks/useApi'
+import api from '../lib/api'
 import { useTheme } from '../hooks/useTheme'
 import {
     LayoutDashboard,
@@ -13,6 +13,11 @@ import {
     X,
     ChevronLeft,
     User,
+    Sparkles,
+    Crown,
+    Zap,
+    Shield,
+    ScrollText,
     Sun,
     Moon,
 } from 'lucide-react'
@@ -21,6 +26,7 @@ const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/urls', icon: Globe, label: 'URLs' },
     { to: '/scans', icon: ScanSearch, label: 'Escaneos' },
+    { to: '/plans', icon: Sparkles, label: 'Planes' },
     { to: '/profile', icon: User, label: 'Perfil' },
     { to: '/settings', icon: Settings, label: 'Configuración' },
     { to: '/admin', icon: ShieldCheck, label: 'Admin', adminOnly: true },
@@ -30,30 +36,68 @@ const pageNames = {
     '/': 'Dashboard',
     '/urls': 'URLs Registradas',
     '/scans': 'Historial de Escaneos',
+    '/plans': 'Planes',
     '/profile': 'Mi Perfil',
     '/settings': 'Configuración',
     '/admin': 'Panel de Administración',
 }
 
+const planIcons = {
+    free: Shield,
+    pro: Zap,
+    ultimate: Crown,
+}
+
+const planBadgeClasses = {
+    free: 'plan-badge-free',
+    pro: 'plan-badge-pro',
+    ultimate: 'plan-badge-ultimate',
+}
+
 export default function DashboardLayout() {
-    useApiSetup()
     const { user } = useUser()
-    const { theme, toggleTheme, isDark } = useTheme()
+    const navigate = useNavigate()
     const location = useLocation()
+    const { isDark, toggleTheme } = useTheme()
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
+    const [profile, setProfile] = useState(null)
+
+    useEffect(() => {
+        const pendingInvite = sessionStorage.getItem('pendingInvite')
+        if (pendingInvite) {
+            sessionStorage.removeItem('pendingInvite')
+            navigate(`/invite/${pendingInvite}`)
+        }
+    }, [navigate])
+
+    useEffect(() => {
+        async function loadProfile() {
+            try {
+                const res = await api.get('/auth/profile/')
+                setProfile(res.data)
+            } catch (err) {
+                console.error('Failed to load profile:', err)
+            }
+        }
+        loadProfile()
+    }, [])
 
     const currentPageName = pageNames[location.pathname] || 'Reporte'
 
-    const isAdmin = user?.publicMetadata?.role === 'admin'
+    const isAdmin = profile?.role === 'admin'
     const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin)
+
+    const currentPlan = profile?.organization?.plan || 'free'
+    const PlanIcon = planIcons[currentPlan] || Shield
+    const planBadgeClass = planBadgeClasses[currentPlan] || 'plan-badge-free'
 
     return (
         <div className="flex h-screen overflow-hidden gradient-bg">
             {/* Mobile overlay */}
             {mobileOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+                    className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-40 lg:hidden"
                     onClick={() => setMobileOpen(false)}
                 />
             )}
@@ -65,20 +109,20 @@ export default function DashboardLayout() {
           ${collapsed ? 'w-[72px]' : 'w-64'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           transition-all duration-300 ease-in-out
-          glass border-r border-gray-200 dark:border-white/10
+          glass border-r border-border
           flex flex-col
           custom-scrollbar
         `}
             >
                 {/* Logo */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
+                <div className="flex items-center justify-between p-4 border-b border-border">
                     {!collapsed && (
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg shadow-blue-500/25">
                                 <ShieldCheck className="w-5 h-5 text-white" />
                             </div>
-                            <span className="font-bold text-lg bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-                                AuditWeb
+                            <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                Vigia
                             </span>
                         </div>
                     )}
@@ -91,14 +135,14 @@ export default function DashboardLayout() {
                     )}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        className="hidden lg:flex p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                        className="hidden lg:flex p-1.5 rounded-lg hover:bg-foreground/10 transition-colors"
                         aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
                     >
                         <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
                     </button>
                     <button
                         onClick={() => setMobileOpen(false)}
-                        className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10"
+                        className="lg:hidden p-1.5 rounded-lg hover:bg-foreground/10"
                         aria-label="Cerrar menú"
                     >
                         <X className="w-4 h-4" />
@@ -117,7 +161,7 @@ export default function DashboardLayout() {
                                 `sidebar-item relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
                 ${isActive
                                     ? 'gradient-primary text-white shadow-lg shadow-blue-500/20'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
                                 }
                 ${collapsed ? 'justify-center' : ''}
                 `
@@ -130,24 +174,48 @@ export default function DashboardLayout() {
                     ))}
                 </nav>
 
+                {/* Terms link */}
+                {!collapsed && (
+                    <div className="px-3 pb-2">
+                        <NavLink
+                            to="/terms"
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground rounded-lg hover:bg-foreground/5 transition-colors"
+                        >
+                            <ScrollText className="w-3.5 h-3.5" />
+                            Términos y Condiciones
+                        </NavLink>
+                    </div>
+                )}
+
                 {/* User section */}
-                <div className="p-3 border-t border-gray-200 dark:border-white/10">
+                <div className="p-3 border-t border-border">
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
                         <UserButton
                             appearance={{
                                 elements: {
-                                    avatarBox: 'w-9 h-9 ring-2 ring-gray-200 dark:ring-white/10',
+                                    avatarBox: 'w-9 h-9 ring-2 ring-border',
                                 },
                             }}
                         />
                         {!collapsed && (
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                    {user?.firstName || 'Usuario'}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                    {user?.primaryEmailAddress?.emailAddress}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium truncate">
+                                        {user?.firstName || 'Usuario'}
+                                    </p>
+                                    {isAdmin && (
+                                        <span className="role-badge-admin px-1.5 py-0.5 rounded text-[10px] font-bold leading-none">
+                                            ADMIN
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className={`${planBadgeClass} px-1.5 py-0.5 rounded text-[10px] font-bold leading-none inline-flex items-center gap-1`}>
+                                        <PlanIcon className="w-2.5 h-2.5" />
+                                        {currentPlan.toUpperCase()}
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -157,11 +225,11 @@ export default function DashboardLayout() {
             {/* Main content */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 {/* Top bar */}
-                <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-white/10 glass">
+                <header className="h-16 flex items-center justify-between px-6 border-b border-border glass">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setMobileOpen(true)}
-                            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                            className="lg:hidden p-2 rounded-lg hover:bg-foreground/10 transition-colors"
                             aria-label="Abrir menú"
                         >
                             <Menu className="w-5 h-5" />
@@ -171,23 +239,19 @@ export default function DashboardLayout() {
                         </h2>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* Theme toggle */}
                         <button
                             onClick={toggleTheme}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-200"
+                            className="p-2 rounded-lg hover:bg-foreground/10 transition-colors"
                             aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                            title={isDark ? 'Modo claro' : 'Modo oscuro'}
                         >
-                            {isDark ? (
-                                <Sun className="w-4 h-4 text-amber-400" />
-                            ) : (
-                                <Moon className="w-4 h-4 text-slate-600" />
-                            )}
+                            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                         </button>
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="hidden sm:inline">Sistema activo</span>
-                            <span className="text-gray-300 dark:text-white/20">•</span>
-                            <span>v1.0</span>
+                            <span className="text-foreground/20">•</span>
+                            <span>v2.0</span>
                         </div>
                     </div>
                 </header>
