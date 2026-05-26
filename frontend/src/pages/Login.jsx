@@ -1,29 +1,40 @@
 import { SignIn } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck, ArrowRight, Scan, Zap, Brain, Lock, ScrollText } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ShieldCheck, ArrowRight, Scan, Zap, Brain, Lock, ScrollText, Shield } from 'lucide-react'
+import { useTheme } from '../hooks/useTheme'
+
+const features = [
+    { icon: Scan,  label: 'Escaneos Automatizados', desc: 'Detecta vulnerabilidades en minutos' },
+    { icon: Brain, label: 'Reportes con IA',         desc: 'Análisis ejecutivos generados por IA' },
+    { icon: Zap,   label: 'Monitoreo Continuo',      desc: 'Protección 24/7 de tus activos' },
+    { icon: Lock,  label: '7+ Checks de Seguridad',  desc: 'Headers, SSL, Cookies y más' },
+]
 
 export default function Login() {
+    const { isDark } = useTheme()
+
     return (
         <div className="min-h-screen flex gradient-bg">
-            {/* Left panel — branding */}
-            <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden">
-                {/* Animated background orbs */}
+            {/* Left panel */}
+            <motion.div
+                initial={{ opacity: 0, x: -24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden"
+            >
                 <div className="absolute w-72 h-72 bg-blue-500/20 rounded-full blur-3xl top-20 left-10 animate-float" />
                 <div className="absolute w-96 h-96 bg-purple-500/15 rounded-full blur-3xl bottom-20 right-10 animate-float-slow" />
                 <div className="absolute w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl top-1/2 left-1/2 animate-float-delayed" />
-
-                {/* Grid pattern overlay */}
                 <div className="absolute inset-0 opacity-[0.03]"
-                    style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }}
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}
                 />
 
                 <div className="relative z-10 max-w-lg text-center">
                     <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/30 animate-pulse-glow">
                         <ShieldCheck className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-4xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-gradient-text bg-[length:200%_auto]">
+                    <h1 className="text-4xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
                         Vigia
                     </h1>
                     <p className="text-xl text-foreground/80 font-medium mb-2">
@@ -32,26 +43,31 @@ export default function Login() {
                     <p className="text-muted-foreground mb-10">
                         Escanea, analiza y protege tus sitios web con tecnología de inteligencia artificial.
                     </p>
-
                     <div className="grid grid-cols-2 gap-4">
-                        {[
-                            { icon: Scan, label: 'Escaneos Automatizados', desc: 'Detecta vulnerabilidades en minutos' },
-                            { icon: Brain, label: 'Reportes con IA', desc: 'Análisis ejecutivos generados por IA' },
-                            { icon: Zap, label: 'Monitoreo Continuo', desc: 'Protección 24/7 de tus activos' },
-                            { icon: Lock, label: '7+ Checks de Seguridad', desc: 'Headers, SSL, Cookies y más' },
-                        ].map((feature) => (
-                            <div key={feature.label} className="glass-card rounded-xl p-4 text-left hover:scale-[1.02] transition-transform">
-                                <feature.icon className="w-6 h-6 text-blue-400 mb-2" />
-                                <div className="text-sm font-semibold">{feature.label}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">{feature.desc}</div>
-                            </div>
+                        {features.map((f, i) => (
+                            <motion.div
+                                key={f.label}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 + i * 0.08 }}
+                                className="glass-card rounded-xl p-4 text-left hover:scale-[1.02] transition-transform"
+                            >
+                                <f.icon className="w-6 h-6 text-blue-400 mb-2" />
+                                <div className="text-sm font-semibold">{f.label}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">{f.desc}</div>
+                            </motion.div>
                         ))}
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Right panel — login form */}
-            <div className="flex-1 flex flex-col justify-center items-center p-8">
+            {/* Right panel */}
+            <motion.div
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="flex-1 flex flex-col justify-center items-center p-8"
+            >
                 <div className="lg:hidden mb-8 text-center">
                     <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4">
                         <ShieldCheck className="w-7 h-7 text-white" />
@@ -65,8 +81,51 @@ export default function Login() {
                     <div className="glass-strong rounded-2xl p-10">
                         <h2 className="text-2xl font-bold text-center mb-2">Bienvenido de vuelta</h2>
                         <p className="text-muted-foreground text-center mb-8 text-sm">
-                            Inicia sesión para acceder a tu panel de seguridad
+                            Inicia sesion para acceder a tu panel de seguridad
                         </p>
+
+                        {/* Terms & Conditions prominent info card */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15, duration: 0.25 }}
+                            className="glass-card rounded-xl p-4 mb-6 border"
+                            style={{
+                                borderColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.12)',
+                                background: isDark
+                                    ? 'linear-gradient(135deg, rgba(59,130,246,0.06), rgba(124,58,237,0.04))'
+                                    : 'linear-gradient(135deg, rgba(37,99,235,0.04), rgba(124,58,237,0.02))',
+                            }}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div
+                                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                                    style={{
+                                        background: isDark
+                                            ? 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(124,58,237,0.15))'
+                                            : 'linear-gradient(135deg, rgba(37,99,235,0.15), rgba(124,58,237,0.1))',
+                                        color: isDark ? '#93c5fd' : '#2563eb',
+                                    }}
+                                >
+                                    <Shield className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <Link
+                                        to="/terms"
+                                        className="text-sm font-semibold hover:underline transition-all inline-flex items-center gap-1"
+                                        style={{ color: isDark ? '#93c5fd' : '#2563eb' }}
+                                    >
+                                        Terminos y Condiciones
+                                        <ScrollText className="w-3 h-3 opacity-70" />
+                                    </Link>
+                                    <p className="text-xs mt-1" style={{ color: isDark ? 'rgba(148,163,184,0.8)' : 'rgba(71,85,105,0.8)' }}>
+                                        Al iniciar sesion aceptas nuestros terminos de uso, politica de privacidad
+                                        y el uso responsable de la plataforma de auditoria de seguridad.
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
+
                         <SignIn
                             routing="hash"
                             signUpUrl="/register"
@@ -88,16 +147,8 @@ export default function Login() {
                             Regístrate <ArrowRight className="w-3 h-3" />
                         </Link>
                     </p>
-
-                    {/* Terms link */}
-                    <p className="text-center mt-3 text-xs text-muted-foreground">
-                        <Link to="/terms" className="hover:text-foreground transition-colors inline-flex items-center gap-1">
-                            <ScrollText className="w-3 h-3" />
-                            Términos y Condiciones
-                        </Link>
-                    </p>
                 </div>
-            </div>
+            </motion.div>
         </div>
     )
 }

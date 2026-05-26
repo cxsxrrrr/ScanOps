@@ -7,6 +7,20 @@ from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+# ReportLab is optional — only needed for PDF generation
+try:
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 from scanner.models import Scan
 from .models import ExecutiveSummary
@@ -14,42 +28,38 @@ from .serializers import ExecutiveSummarySerializer
 
 
 def _build_pdf_with_reportlab(scan, findings, summary_content):
-    """Build a styled PDF using ReportLab as a fallback for environments without WeasyPrint deps."""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import LETTER
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
+    """Build a styled PDF using ReportLab (cross-platform, always available)."""
     def _clean(text):
-        return (str(text or '')).replace('<', '&lt;').replace('>', '&gt;')
+        return (str(text or '')).replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
 
     def _severity_color(severity):
         mapping = {
-            'CRITICAL': colors.HexColor('#7c3aed'),
-            'HIGH': colors.HexColor('#dc2626'),
-            'MEDIUM': colors.HexColor('#d97706'),
-            'LOW': colors.HexColor('#2563eb'),
-            'INFO': colors.HexColor('#475569'),
+            'CRITICAL': rl_colors.HexColor('#7c3aed'),
+            'HIGH': rl_colors.HexColor('#dc2626'),
+            'MEDIUM': rl_colors.HexColor('#d97706'),
+            'LOW': rl_colors.HexColor('#2563eb'),
+            'INFO': rl_colors.HexColor('#475569'),
         }
-        return mapping.get((severity or '').upper(), colors.HexColor('#334155'))
+        return mapping.get((severity or '').upper(), rl_colors.HexColor('#334155'))
+
+    findings_list = list(findings)
 
     stats = {
-        'total': findings.count(),
-        'critical': findings.filter(severity='CRITICAL').count(),
-        'high': findings.filter(severity='HIGH').count(),
-        'medium': findings.filter(severity='MEDIUM').count(),
-        'low': findings.filter(severity='LOW').count(),
+        'total': len(findings_list),
+        'critical': sum(1 for f in findings_list if f.severity == 'CRITICAL'),
+        'high': sum(1 for f in findings_list if f.severity == 'HIGH'),
+        'medium': sum(1 for f in findings_list if f.severity == 'MEDIUM'),
+        'low': sum(1 for f in findings_list if f.severity == 'LOW'),
     }
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=LETTER,
-        leftMargin=0.55 * inch,
-        rightMargin=0.55 * inch,
-        topMargin=0.55 * inch,
-        bottomMargin=0.55 * inch,
+        leftMargin=0.5 * inch,
+        rightMargin=0.5 * inch,
+        topMargin=0.5 * inch,
+        bottomMargin=0.5 * inch,
         title=f'Reporte Scan {scan.pk}',
     )
 
@@ -59,7 +69,7 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
         fontSize=20,
-        textColor=colors.white,
+        textColor=rl_colors.white,
         leading=24,
         spaceAfter=4,
     )
@@ -68,26 +78,35 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=9,
-        textColor=colors.HexColor('#bfdbfe'),
+        textColor=rl_colors.HexColor('#bfdbfe'),
         leading=12,
     )
     section_title_style = ParagraphStyle(
         'SectionTitle',
         parent=styles['Heading3'],
         fontName='Helvetica-Bold',
-        fontSize=12,
-        textColor=colors.HexColor('#0f172a'),
-        spaceBefore=10,
+        fontSize=11,
+        textColor=rl_colors.HexColor('#0f172a'),
+        spaceBefore=12,
         spaceAfter=6,
     )
     body_style = ParagraphStyle(
         'BodyCopy',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=13,
-        textColor=colors.HexColor('#1f2937'),
+        fontSize=8,
+        leading=11,
+        textColor=rl_colors.HexColor('#1f2937'),
     )
+    header_finding_style = ParagraphStyle(
+        'FindingHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        textColor=rl_colors.white,
+        leading=11,
+    )
+    thin_border = rl_colors.HexColor('#cbd5e1')
 
     story = []
 
@@ -96,97 +115,97 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
             Paragraph('Reporte de Auditoria Web', title_style),
             Paragraph('VIGIA', subtitle_style),
         ]],
-        colWidths=[5.8 * inch, 1.0 * inch],
+        colWidths=[5.6 * inch, 1.0 * inch],
     )
     header_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1d4ed8')),
+        ('BACKGROUND', (0, 0), (-1, -1), rl_colors.HexColor('#1d4ed8')),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 14),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 14),
-        ('TOPPADDING', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
     story.append(header_table)
 
+    scan_date = scan.started_at.strftime('%d/%m/%Y %H:%M') if scan.started_at else '-'
     metadata = [
         [Paragraph('<b>Scan ID</b>', body_style), Paragraph(_clean(scan.pk), body_style)],
-        [Paragraph('<b>URL</b>', body_style), Paragraph(_clean(scan.url_asset.url), body_style)],
+        [Paragraph('<b>URL</b>', body_style), Paragraph(_clean(scan.url_asset.url if scan.url_asset else '-'), body_style)],
         [Paragraph('<b>Estado</b>', body_style), Paragraph(_clean(scan.status), body_style)],
-        [
-            Paragraph('<b>Fecha</b>', body_style),
-            Paragraph(_clean(scan.started_at.strftime('%d/%m/%Y %H:%M') if scan.started_at else ''), body_style),
-        ],
+        [Paragraph('<b>Fecha</b>', body_style), Paragraph(scan_date, body_style)],
     ]
-    meta_table = Table(metadata, colWidths=[1.0 * inch, 5.8 * inch])
+    meta_table = Table(metadata, colWidths=[1.0 * inch, 5.6 * inch])
     meta_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#eff6ff')),
-        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#cbd5e1')),
+        ('BACKGROUND', (0, 0), (-1, -1), rl_colors.HexColor('#eff6ff')),
+        ('GRID', (0, 0), (-1, -1), 0.4, rl_colors.HexColor('#cbd5e1')),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
     story.append(meta_table)
     story.append(Spacer(1, 10))
 
     story.append(Paragraph('Resumen de Hallazgos', section_title_style))
-    stat_row = [
-        [
-            Paragraph('<b>Total</b><br/><font size="14">{}</font>'.format(stats['total']), body_style),
-            Paragraph('<b>Critico</b><br/><font size="14">{}</font>'.format(stats['critical']), body_style),
-            Paragraph('<b>Alto</b><br/><font size="14">{}</font>'.format(stats['high']), body_style),
-            Paragraph('<b>Medio</b><br/><font size="14">{}</font>'.format(stats['medium']), body_style),
-            Paragraph('<b>Bajo</b><br/><font size="14">{}</font>'.format(stats['low']), body_style),
-        ]
-    ]
-    stats_table = Table(stat_row, colWidths=[1.35 * inch] * 5)
+    stat_row = [[
+        Paragraph('<b>Total</b><br/><font size="14">{}</font>'.format(stats['total']), body_style),
+        Paragraph('<b>Critico</b><br/><font size="14">{}</font>'.format(stats['critical']), body_style),
+        Paragraph('<b>Alto</b><br/><font size="14">{}</font>'.format(stats['high']), body_style),
+        Paragraph('<b>Medio</b><br/><font size="14">{}</font>'.format(stats['medium']), body_style),
+        Paragraph('<b>Bajo</b><br/><font size="14">{}</font>'.format(stats['low']), body_style),
+    ]]
+    stats_table = Table(stat_row, colWidths=[1.3 * inch] * 5)
     stats_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#e2e8f0')),
-        ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#ede9fe')),
-        ('BACKGROUND', (2, 0), (2, 0), colors.HexColor('#fee2e2')),
-        ('BACKGROUND', (3, 0), (3, 0), colors.HexColor('#fef3c7')),
-        ('BACKGROUND', (4, 0), (4, 0), colors.HexColor('#dbeafe')),
-        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#94a3b8')),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('BACKGROUND', (0, 0), (0, 0), rl_colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (1, 0), (1, 0), rl_colors.HexColor('#ede9fe')),
+        ('BACKGROUND', (2, 0), (2, 0), rl_colors.HexColor('#fee2e2')),
+        ('BACKGROUND', (3, 0), (3, 0), rl_colors.HexColor('#fef3c7')),
+        ('BACKGROUND', (4, 0), (4, 0), rl_colors.HexColor('#dbeafe')),
+        ('BOX', (0, 0), (-1, -1), 0.5, rl_colors.HexColor('#94a3b8')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, rl_colors.HexColor('#cbd5e1')),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
     story.append(stats_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 12))
 
     if summary_content:
         story.append(Paragraph('Resumen Ejecutivo', section_title_style))
         summary_text = _clean(summary_content)
-        if len(summary_text) > 3500:
-            summary_text = summary_text[:3500] + '...'
-
-        # Use independent paragraphs so content can flow across pages.
+        if len(summary_text) > 4000:
+            summary_text = summary_text[:4000] + '...'
         for part in summary_text.split('\n'):
             part = part.strip()
             if not part:
                 continue
             story.append(Paragraph(part, body_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 3))
         story.append(Spacer(1, 8))
 
     story.append(Paragraph('Hallazgos Tecnicos', section_title_style))
-    findings_data = [[
-        Paragraph('<b>Severidad</b>', body_style),
-        Paragraph('<b>Titulo</b>', body_style),
-        Paragraph('<b>Categoria</b>', body_style),
-        Paragraph('<b>Recomendacion</b>', body_style),
-    ]]
+    # Table: Severity | Title | Category | Description | Recommendation | Evidence
+    findings_header = [
+        Paragraph('<b>Sev.</b>', header_finding_style),
+        Paragraph('<b>Titulo</b>', header_finding_style),
+        Paragraph('<b>Categoria</b>', header_finding_style),
+        Paragraph('<b>Descripcion</b>', header_finding_style),
+        Paragraph('<b>Recomendacion</b>', header_finding_style),
+        Paragraph('<b>Evidencia</b>', header_finding_style),
+    ]
+    findings_data = [findings_header]
 
-    for finding in findings:
+    for finding in findings_list:
         findings_data.append([
-            Paragraph(_clean(finding.severity), body_style),
-            Paragraph(_clean(finding.title), body_style),
-            Paragraph(_clean(finding.category), body_style),
-            Paragraph(_clean(finding.recommendation), body_style),
+            Paragraph(_clean(finding.severity or '-'), body_style),
+            Paragraph(_clean(finding.title or '-'), body_style),
+            Paragraph(_clean(finding.category or '-'), body_style),
+            Paragraph(_clean(finding.description or '-'), body_style),
+            Paragraph(_clean(finding.recommendation or '-'), body_style),
+            Paragraph(_clean(finding.evidence or '-'), body_style),
         ])
 
     if len(findings_data) == 1:
@@ -194,35 +213,38 @@ def _build_pdf_with_reportlab(scan, findings, summary_content):
             Paragraph('INFO', body_style),
             Paragraph('Sin hallazgos detectados', body_style),
             Paragraph('-', body_style),
-            Paragraph('Mantener monitoreo continuo', body_style),
+            Paragraph('No se encontraron vulnerabilidades en este escaneo.', body_style),
+            Paragraph('Mantener monitoreo continuo.', body_style),
+            Paragraph('-', body_style),
         ])
 
-    findings_table = Table(findings_data, colWidths=[1.0 * inch, 2.0 * inch, 1.2 * inch, 2.55 * inch], repeatRows=1)
-    base_style = [
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e293b')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#cbd5e1')),
+    col_widths = [0.55 * inch, 1.4 * inch, 0.8 * inch, 1.4 * inch, 1.4 * inch, 1.1 * inch]
+    findings_table = Table(findings_data, colWidths=col_widths, repeatRows=1)
+    table_style_cmds = [
+        ('BACKGROUND', (0, 0), (-1, 0), rl_colors.HexColor('#1e293b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.3, thin_border),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]
-    for row_idx, finding in enumerate(findings, start=1):
-        stripe = colors.HexColor('#f8fafc') if row_idx % 2 else colors.HexColor('#ffffff')
-        base_style.append(('BACKGROUND', (1, row_idx), (-1, row_idx), stripe))
-        base_style.append(('BACKGROUND', (0, row_idx), (0, row_idx), _severity_color(finding.severity)))
-        base_style.append(('TEXTCOLOR', (0, row_idx), (0, row_idx), colors.white))
+    for row_idx, finding in enumerate(findings_list, start=1):
+        stripe = rl_colors.HexColor('#f8fafc') if row_idx % 2 else rl_colors.white
+        table_style_cmds.append(('BACKGROUND', (1, row_idx), (-1, row_idx), stripe))
+        table_style_cmds.append(('BACKGROUND', (0, row_idx), (0, row_idx), _severity_color(finding.severity)))
+        table_style_cmds.append(('TEXTCOLOR', (0, row_idx), (0, row_idx), rl_colors.white))
 
-    findings_table.setStyle(TableStyle(base_style))
+    findings_table.setStyle(TableStyle(table_style_cmds))
     story.append(findings_table)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 10))
     story.append(Paragraph('Generado por Vigia', ParagraphStyle(
         'Footer',
         parent=styles['Normal'],
         alignment=1,
         fontSize=8,
-        textColor=colors.HexColor('#64748b'),
+        textColor=rl_colors.HexColor('#64748b'),
     )))
 
     doc.build(story)
@@ -307,41 +329,109 @@ def _build_report_file_response(scan, fmt):
 
     if fmt in ('excel', 'xlsx'):
         workbook = Workbook()
+
+        # --- Styles ---
+        header_font = Font(bold=True, size=11, color='FFFFFF')
+        header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+        header_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell_align = Alignment(vertical='top', wrap_text=True)
+        thin_border = Border(
+            left=Side(style='thin', color='CBD5E1'),
+            right=Side(style='thin', color='CBD5E1'),
+            top=Side(style='thin', color='CBD5E1'),
+            bottom=Side(style='thin', color='CBD5E1'),
+        )
+        url_font = Font(color='2563EB', underline='single')
+
+        def style_header(ws, row_num, col_count):
+            for col in range(1, col_count + 1):
+                cell = ws.cell(row=row_num, column=col)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_align
+                cell.border = thin_border
+
+        def style_data_cell(cell):
+            cell.alignment = cell_align
+            cell.border = thin_border
+
+        def auto_width(ws, min_width=10, max_width=55):
+            for col_cells in ws.columns:
+                col_letter = get_column_letter(col_cells[0].column)
+                max_len = 0
+                for cell in col_cells:
+                    val = str(cell.value or '')
+                    max_len = max(max_len, min(len(val), max_width))
+                ws.column_dimensions[col_letter].width = max(max_len + 2, min_width)
+
+        # --- Hoja 1: Resumen ---
         summary_ws = workbook.active
         summary_ws.title = 'Resumen'
         summary_ws.append(['Campo', 'Valor'])
-        summary_ws.append(['Scan ID', scan.pk])
-        summary_ws.append(['URL', scan.url_asset.url])
-        summary_ws.append(['Estado', scan.status])
-        summary_ws.append(['Fecha inicio', scan.started_at.strftime('%d/%m/%Y %H:%M') if scan.started_at else ''])
-        summary_ws.append(['Fecha fin', scan.finished_at.strftime('%d/%m/%Y %H:%M') if scan.finished_at else ''])
-        summary_ws.append(['Total hallazgos', findings.count()])
-        summary_ws.append(['Criticos', findings.filter(severity='CRITICAL').count()])
-        summary_ws.append(['Altos', findings.filter(severity='HIGH').count()])
-        summary_ws.append(['Medios', findings.filter(severity='MEDIUM').count()])
-        summary_ws.append(['Bajos', findings.filter(severity='LOW').count()])
-        summary_ws.append(['Info', findings.filter(severity='INFO').count()])
+        style_header(summary_ws, 1, 2)
 
+        scan_date_str = scan.started_at.strftime('%d/%m/%Y %H:%M') if scan.started_at else '-'
+        scan_url = scan.url_asset.url if scan.url_asset else '-'
+        summary_rows = [
+            ['Scan ID', scan.pk],
+            ['URL', scan_url],
+            ['Estado', scan.status],
+            ['Fecha inicio', scan_date_str],
+            ['Fecha fin', scan.finished_at.strftime('%d/%m/%Y %H:%M') if scan.finished_at else '-'],
+            ['Total hallazgos', findings.count()],
+            ['Criticos', findings.filter(severity='CRITICAL').count()],
+            ['Altos', findings.filter(severity='HIGH').count()],
+            ['Medios', findings.filter(severity='MEDIUM').count()],
+            ['Bajos', findings.filter(severity='LOW').count()],
+            ['Info', findings.filter(severity='INFO').count()],
+        ]
+        for row in summary_rows:
+            summary_ws.append(row)
+            current_row = summary_ws.max_row
+            for cell in summary_ws[current_row]:
+                style_data_cell(cell)
+            if row[0] == 'URL':
+                summary_ws.cell(row=current_row, column=2).font = url_font
+        auto_width(summary_ws)
+
+        # --- Hoja 2: Hallazgos (con detalle completo) ---
         findings_ws = workbook.create_sheet(title='Hallazgos')
-        findings_ws.append([
-            'ID', 'Titulo', 'Severidad', 'Categoria',
-            'Descripcion', 'Recomendacion', 'Evidencia',
-        ])
-        for finding in findings:
-            findings_ws.append([
-                finding.pk,
-                finding.title,
-                finding.severity,
-                finding.category,
-                finding.description,
-                finding.recommendation,
-                finding.evidence,
-            ])
+        findings_headers = [
+            'ID', 'URL', 'Fecha Escaneo', 'Titulo', 'Severidad',
+            'Categoria', 'Descripcion', 'Recomendacion', 'Evidencia',
+        ]
+        findings_ws.append(findings_headers)
+        style_header(findings_ws, 1, len(findings_headers))
 
+        for finding in findings:
+            row_data = [
+                finding.pk,
+                scan_url,
+                scan_date_str,
+                finding.title or '',
+                finding.severity or '',
+                finding.category or '',
+                finding.description or '',
+                finding.recommendation or '',
+                finding.evidence or '',
+            ]
+            findings_ws.append(row_data)
+            for cell in findings_ws[findings_ws.max_row]:
+                style_data_cell(cell)
+
+        auto_width(findings_ws)
+
+        # --- Hoja 3: Resumen Ejecutivo (si existe) ---
         if summary_content:
             executive_ws = workbook.create_sheet(title='Resumen Ejecutivo')
-            executive_ws.append(['Contenido'])
+            executive_ws.append(['Contenido del Resumen Ejecutivo'])
+            executive_ws.merge_cells('A1:B1')
+            style_header(executive_ws, 1, 1)
             executive_ws.append([summary_content])
+            executive_ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=2)
+            cell = executive_ws.cell(row=2, column=1)
+            cell.alignment = Alignment(vertical='top', wrap_text=True)
+            executive_ws.column_dimensions['A'].width = 80
 
         output = BytesIO()
         workbook.save(output)
@@ -355,6 +445,8 @@ def _build_report_file_response(scan, fmt):
         return response
 
     if fmt == 'pdf':
+        # Try WeasyPrint first (produces nicer PDF with CSS), fall back to ReportLab
+        weasyprint_error = None
         try:
             from weasyprint import HTML
 
@@ -363,6 +455,9 @@ def _build_report_file_response(scan, fmt):
             response['Content-Disposition'] = f'attachment; filename="reporte_scan_{scan.pk}.pdf"'
             return response
         except Exception as exc:
+            weasyprint_error = str(exc)
+
+        if REPORTLAB_AVAILABLE:
             try:
                 pdf = _build_pdf_with_reportlab(scan, findings, summary_content)
                 response = HttpResponse(pdf, content_type='application/pdf')
@@ -371,13 +466,20 @@ def _build_report_file_response(scan, fmt):
             except Exception as fallback_exc:
                 return Response(
                     {
-                        'detail': (
-                            f'PDF generation not available. WeasyPrint error: {exc}. '
-                            f'ReportLab fallback error: {fallback_exc}'
-                        ),
+                        'detail': f'No se pudo generar el PDF. WeasyPrint: {weasyprint_error}. ReportLab: {fallback_exc}',
                     },
-                    status=status.HTTP_501_NOT_IMPLEMENTED,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
+        else:
+            return Response(
+                {
+                    'detail': (
+                        'No se pudo generar el PDF. Instala WeasyPrint o ReportLab en el servidor. '
+                        f'WeasyPrint error: {weasyprint_error}. ReportLab no esta instalado.'
+                    ),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     return Response(
         {'detail': 'Formato no soportado. Usa format=excel o format=pdf.'},

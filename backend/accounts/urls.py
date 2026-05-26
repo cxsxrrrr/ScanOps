@@ -9,4 +9,10 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('organization/', views.organization_detail, name='organization'),
     path('accept-terms/', views.accept_terms, name='accept-terms'),
+    path('team/', views.team_list, name='team-list'),
+    path('team/leave/', views.leave_organization, name='team-leave'),
+    path('invitations/', views.invitation_list, name='invitation-list'),
+    path('invitations/<int:invitation_id>/revoke/', views.revoke_invitation, name='invitation-revoke'),
+    path('invitations/<uuid:token>/info/', views.invitation_info, name='invitation-info'),
+    path('invitations/<uuid:token>/accept/', views.accept_invitation, name='invitation-accept'),
 ]

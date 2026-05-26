@@ -1,6 +1,8 @@
 """
 User and Organization models for Vigia.
 """
+import uuid
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -106,3 +108,29 @@ class User(AbstractUser):
         """Record that the user has accepted the terms and conditions."""
         self.accepted_terms_at = timezone.now()
         self.save(update_fields=['accepted_terms_at'])
+
+
+class Invitation(models.Model):
+    """Team invitation with unique token."""
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='invitations'
+    )
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='sent_invitations'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='accepted_invitations'
+    )
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Invitation {self.token} → {self.organization.name}"
+
+    @property
+    def is_active(self):
+        return self.accepted_by is None

@@ -10,15 +10,25 @@ const api = axios.create({
   },
 })
 
-// Token will be set by the auth hook
 let getTokenFn = null
+
+// Resolved by signalAuthReady() once Clerk confirms isLoaded && isSignedIn.
+// Blocks the interceptor so no request fires before the JWT cache is warm.
+let _resolveReady
+const _authReady = new Promise(resolve => { _resolveReady = resolve })
 
 export function setTokenGetter(fn) {
   getTokenFn = fn
 }
 
+// Called from useApiSetup effect when Clerk is fully loaded and signed in.
+export function signalAuthReady() {
+  _resolveReady()
+}
+
 // Request interceptor — inject Authorization header
 api.interceptors.request.use(async (config) => {
+  await _authReady
   if (getTokenFn) {
     try {
       const token = await getTokenFn()

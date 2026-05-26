@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SignUp } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { ShieldCheck, ArrowLeft, ScrollText, Check } from 'lucide-react'
 
 export default function Register() {
@@ -8,12 +9,16 @@ export default function Register() {
 
     return (
         <div className="min-h-screen flex justify-center items-center gradient-bg p-8 relative overflow-hidden">
-            {/* Background orbs */}
             <div className="absolute w-72 h-72 bg-purple-500/20 rounded-full blur-3xl top-10 right-20 animate-float" />
             <div className="absolute w-96 h-96 bg-blue-500/15 rounded-full blur-3xl bottom-10 left-20 animate-float-slow" />
             <div className="absolute w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl top-1/2 left-1/2 -translate-x-1/2 animate-float-delayed" />
 
-            <div className="relative z-10 w-full max-w-lg">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="relative z-10 w-full max-w-lg"
+            >
                 <div className="text-center mb-8">
                     <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
                         <ShieldCheck className="w-7 h-7 text-white" />
@@ -21,17 +26,14 @@ export default function Register() {
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                         Crear Cuenta en Vigia
                     </h1>
-                    <p className="text-muted-foreground mt-2">
+                    <p className="text-muted-foreground mt-2 text-sm">
                         Protege tus sitios web con escaneos de seguridad inteligentes
                     </p>
                 </div>
 
-                {/* Terms and Conditions checkbox */}
+                {/* Terms checkbox */}
                 <div className="glass-card rounded-xl p-4 mb-4">
-                    <label
-                        htmlFor="terms-checkbox"
-                        className="flex items-start gap-3 cursor-pointer group"
-                    >
+                    <label htmlFor="terms-checkbox" className="flex items-start gap-3 cursor-pointer">
                         <div className="pt-0.5">
                             <button
                                 type="button"
@@ -49,9 +51,7 @@ export default function Register() {
                             </button>
                         </div>
                         <div className="text-sm">
-                            <span className="text-muted-foreground">
-                                He leído y acepto los{' '}
-                            </span>
+                            <span className="text-muted-foreground">He leído y acepto los </span>
                             <Link
                                 to="/terms"
                                 className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2"
@@ -60,14 +60,13 @@ export default function Register() {
                                 Términos y Condiciones
                             </Link>
                             <span className="text-muted-foreground">
-                                {' '}de uso de Vigia, incluyendo las políticas de uso
-                                responsable de la herramienta de ciberseguridad.
+                                {' '}de uso de Vigia, incluyendo las políticas de uso responsable de la herramienta de ciberseguridad.
                             </span>
                         </div>
                     </label>
                 </div>
 
-                {/* Clerk SignUp form - blocked if terms not accepted */}
+                {/* Clerk form */}
                 <div className="relative">
                     {!termsAccepted && (
                         <div className="absolute inset-0 z-20 rounded-2xl bg-black/40 backdrop-blur-[2px] flex items-center justify-center cursor-not-allowed">
@@ -79,9 +78,7 @@ export default function Register() {
                             </div>
                         </div>
                     )}
-                    <div className={`glass-strong rounded-2xl p-10 transition-opacity duration-300 ${
-                        !termsAccepted ? 'opacity-60' : ''
-                    }`}>
+                    <div className={`glass-strong rounded-2xl p-10 transition-opacity duration-300 ${!termsAccepted ? 'opacity-60' : ''}`}>
                         <SignUp
                             routing="hash"
                             signInUrl="/login"
@@ -103,7 +100,7 @@ export default function Register() {
                         <ArrowLeft className="w-3 h-3" /> Volver al inicio de sesión
                     </Link>
                 </p>
-            </div>
+            </motion.div>
         </div>
     )
 }

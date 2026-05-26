@@ -14,6 +14,14 @@ from notifications.models import EmailLog
 class IsAdminUser(permissions.BasePermission):
     """Only allow admin users."""
     def has_permission(self, request, view):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Admin check: user={request.user.email} "
+            f"role={request.user.role} "
+            f"clerk_id={request.user.clerk_user_id} "
+            f"is_auth={request.user.is_authenticated}"
+        )
         return request.user.is_authenticated and request.user.role == 'admin'
 
 

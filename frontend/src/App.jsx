@@ -15,30 +15,11 @@ import Plans from './pages/Plans'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import JoinTeam from './pages/JoinTeam'
 
-function App({ authEnabled = true }) {
-    if (authEnabled) {
-        useApiSetup()
-    }
-
-    if (!authEnabled) {
-        return (
-            <div className="min-h-screen gradient-bg flex items-center justify-center p-6">
-                <div className="max-w-xl w-full glass-strong rounded-2xl p-8 text-center">
-                    <h1 className="text-2xl font-bold mb-3">Frontend loaded</h1>
-                    <p className="text-muted-foreground mb-4">
-                        Authentication is disabled because <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is missing.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        Add this key in your <strong>.env</strong> file and restart <strong>npm run dev</strong> to enable login/register pages.
-                    </p>
-                </div>
-            </div>
-        )
-    }
-
+// Separated so useApiSetup is never called conditionally (Rules of Hooks)
+function AuthenticatedApp() {
+    useApiSetup()
     return (
         <>
-            {/* Unauthenticated routes */}
             <SignedOut>
                 <Routes>
                     <Route path="/login" element={<Login />} />
@@ -49,7 +30,6 @@ function App({ authEnabled = true }) {
                 </Routes>
             </SignedOut>
 
-            {/* Authenticated routes */}
             <SignedIn>
                 <Routes>
                     <Route path="/" element={<DashboardLayout />}>
@@ -71,6 +51,25 @@ function App({ authEnabled = true }) {
             </SignedIn>
         </>
     )
+}
+
+function App({ authEnabled = true }) {
+    if (!authEnabled) {
+        return (
+            <div className="min-h-screen gradient-bg flex items-center justify-center p-6">
+                <div className="max-w-xl w-full glass-strong rounded-2xl p-8 text-center">
+                    <h1 className="text-2xl font-bold mb-3">Frontend loaded</h1>
+                    <p className="text-muted-foreground mb-4">
+                        Authentication is disabled because <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is missing.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Add this key in your <strong>.env</strong> file and restart <strong>npm run dev</strong> to enable login/register pages.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+    return <AuthenticatedApp />
 }
 
 export default App
