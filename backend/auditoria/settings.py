@@ -131,8 +131,9 @@ SPECTACULAR_SETTINGS = {
 }
 
 # --- CORS ---
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 CORS_ALLOWED_ORIGINS = [
-    config('FRONTEND_URL', default='http://localhost:5173'),
+    FRONTEND_URL,
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -165,6 +166,10 @@ GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 # --- Resend ---
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
 RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='onboarding@resend.dev')
+
+# --- Stripe ---
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
 # --- Scan Engine Config ---
 SCAN_TIMEOUT = 30  # seconds per check

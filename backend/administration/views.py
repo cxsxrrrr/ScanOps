@@ -201,3 +201,165 @@ def update_user_role(request, pk):
         'user_id': user.id,
         'role': user.role,
     })
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAdminUser])
+def organization_detail(request, pk):
+    """Retrieve, update or delete an organization."""
+    try:
+        org = Organization.objects.get(pk=pk)
+    except Organization.DoesNotExist:
+        return Response({'detail': 'Organization not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(OrganizationSerializer(org).data)
+
+    elif request.method == 'PUT':
+        from .serializers import AdminOrgUpdateSerializer
+        serializer = AdminOrgUpdateSerializer(org, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(OrganizationSerializer(org).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        org.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAdminUser])
+def user_detail(request, pk):
+    """Retrieve, update or delete a user."""
+    from accounts.serializers import UserSerializer
+    try:
+        user = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(UserSerializer(user).data)
+
+    elif request.method == 'PUT':
+        from .serializers import AdminUserUpdateSerializer
+        serializer = AdminUserUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(UserSerializer(user).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def analytics_organizations(request):
+    """Get global ranking and metrics for all organizations."""
+    from django.db.models import Count, Q, Max, Sum
+    
+    orgs = Organization.objects.annotate(
+        total_urls=Count('urls', distinct=True),
+        total_users=Count('users', distinct=True),
+        total_scans=Count('urls__scans', distinct=True),
+        last_scan_date=Max('urls__scans__started_at'),
+        critical_findings=Count('urls__scans__findings', filter=Q(urls__scans__findings__severity='CRITICAL'), distinct=True),
+        high_findings=Count('urls__scans__findings', filter=Q(urls__scans__findings__severity='HIGH'), distinct=True),
+        medium_findings=Count('urls__scans__findings', filter=Q(urls__scans__findings__severity='MEDIUM'), distinct=True),
+    ).order_by('-critical_findings', '-high_findings')
+
+    data = []
+    for org in orgs:
+        risk_score = org.critical_findings * 10 + org.high_findings * 5 + org.medium_findings * 2
+        
+        status = 'Sano'
+        if risk_score > 50 or org.critical_findings > 0:
+            status = 'Crítico'
+        elif risk_score > 20 or org.high_findings > 0:
+            status = 'Advertencia'
+
+        data.append({
+            'id': org.id,
+            'name': org.name,
+            'plan': org.plan,
+            'total_urls': org.total_urls,
+            'total_users': org.total_users,
+            'total_scans': org.total_scans,
+            'last_scan_date': org.last_scan_date,
+            'critical_findings': org.critical_findings,
+            'high_findings': org.high_findings,
+            'medium_findings': org.medium_findings,
+            'risk_score': risk_score,
+            'status': status
+        })
+
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def analytics_organization_detail(request, pk):
+    """Get detailed analytics for a specific organization."""
+    try:
+        org = Organization.objects.get(pk=pk)
+    except Organization.DoesNotExist:
+        return Response({'detail': 'Organization not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Users
+    users_data = org.users.values('id', 'email', 'role', 'last_login')
+
+    # URLs and their last scan status
+    urls = org.urls.all()
+    urls_data = []
+    
+    scan_history = []
+    total_findings = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'INFO': 0}
+
+    for url in urls:
+        last_scan = url.scans.order_by('-started_at').first()
+        
+        url_info = {
+            'id': url.id,
+            'url': url.url,
+            'status': url.status,
+            'last_scan_status': last_scan.status if last_scan else None,
+            'last_scan_date': last_scan.started_at if last_scan else None,
+            'critical': last_scan.critical_count if last_scan else 0,
+            'high': last_scan.high_count if last_scan else 0,
+            'medium': last_scan.medium_count if last_scan else 0,
+        }
+        urls_data.append(url_info)
+        
+        # Accumulate finding totals from the LAST scan of each URL to avoid counting historical duplicates
+        if last_scan:
+            total_findings['CRITICAL'] += url_info['critical']
+            total_findings['HIGH'] += url_info['high']
+            total_findings['MEDIUM'] += url_info['medium']
+            total_findings['LOW'] += last_scan.low_count
+            
+        # Collect recent scan history for charts (limit to last 10 per URL)
+        for scan in url.scans.order_by('-started_at')[:10]:
+            scan_history.append({
+                'id': scan.id,
+                'url': url.url,
+                'started_at': scan.started_at,
+                'status': scan.status,
+                'findings_count': scan.findings_count
+            })
+
+    # Sort scan history chronologically for chart
+    scan_history.sort(key=lambda x: x['started_at'])
+
+    return Response({
+        'organization': {
+            'id': org.id,
+            'name': org.name,
+            'plan': org.plan,
+        },
+        'total_findings': total_findings,
+        'users': list(users_data),
+        'urls': urls_data,
+        'recent_scans': scan_history[-50:], # limit global chart to 50
+    })

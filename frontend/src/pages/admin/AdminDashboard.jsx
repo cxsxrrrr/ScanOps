@@ -14,8 +14,12 @@ import {
     ShieldCheck, Users, ScanSearch, AlertTriangle,
     Mail, Loader2, RefreshCw, XCircle, Building,
     Crown, Zap, Shield, Check, BarChart3, CheckCircle2,
-    Clock,
+    Clock, Activity,
 } from 'lucide-react'
+
+import { EditOrgModal } from './EditOrgModal'
+import { EditUserModal } from './EditUserModal'
+import { OrgAnalyticsModal } from './OrgAnalyticsModal'
 
 const planConfig = {
     free:     { icon: Shield,  label: 'Free',     gradient: 'from-gray-500 to-gray-600',    badge: 'plan-badge-free' },
@@ -28,9 +32,11 @@ export default function AdminDashboard() {
     const [errors,        setErrors]        = useState(null)
     const [users,         setUsers]         = useState([])
     const [orgs,          setOrgs]          = useState([])
+    const [analytics,     setAnalytics]     = useState([])
     const [loading,       setLoading]       = useState(true)
-    const [updatingPlan,  setUpdatingPlan]  = useState(null)
-    const [updatingRole,  setUpdatingRole]  = useState(null)
+    const [editingOrg,    setEditingOrg]    = useState(null)
+    const [editingUser,   setEditingUser]   = useState(null)
+    const [viewingAnalytics, setViewingAnalytics] = useState(null)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -42,16 +48,18 @@ export default function AdminDashboard() {
         setLoading(true)
         const config = signal ? { signal } : {}
         try {
-            const [metricsRes, errorsRes, usersRes, orgsRes] = await Promise.all([
+            const [metricsRes, errorsRes, usersRes, orgsRes, analyticsRes] = await Promise.all([
                 api.get('/admin/metrics/', config),
                 api.get('/admin/errors/', config),
                 api.get('/admin/users/', config).catch(() => ({ data: [] })),
                 api.get('/admin/organizations/', config).catch(() => ({ data: [] })),
+                api.get('/admin/analytics/organizations/', config).catch(() => ({ data: [] })),
             ])
             setMetrics(metricsRes.data)
             setErrors(errorsRes.data)
             setUsers(usersRes.data)
             setOrgs(orgsRes.data)
+            setAnalytics(analyticsRes.data)
         } catch (err) {
             if (err.code === 'ERR_CANCELED') return
             console.error('Failed to load admin data:', err)
@@ -60,31 +68,7 @@ export default function AdminDashboard() {
         }
     }
 
-    async function handleChangePlan(orgId, newPlan) {
-        setUpdatingPlan(orgId)
-        try {
-            await api.patch(`/admin/organizations/${orgId}/plan/`, { plan: newPlan })
-            toast.success('Plan actualizado.')
-            loadData()
-        } catch (err) {
-            toast.error(err.response?.data?.detail || 'Error al actualizar plan.')
-        } finally {
-            setUpdatingPlan(null)
-        }
-    }
 
-    async function handleChangeRole(userId, newRole) {
-        setUpdatingRole(userId)
-        try {
-            await api.patch(`/admin/users/${userId}/role/`, { role: newRole })
-            toast.success('Rol actualizado.')
-            loadData()
-        } catch (err) {
-            toast.error(err.response?.data?.detail || 'Error al actualizar rol.')
-        } finally {
-            setUpdatingRole(null)
-        }
-    }
 
     if (loading) return (
         <div className="space-y-6">
@@ -134,6 +118,9 @@ export default function AdminDashboard() {
                 <TabsList className="w-full">
                     <TabsTrigger value="overview"  className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
                         <BarChart3 className="w-4 h-4" /> General
+                    </TabsTrigger>
+                    <TabsTrigger value="intelligence" className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
+                        <Activity className="w-4 h-4" /> Inteligencia
                     </TabsTrigger>
                     <TabsTrigger value="orgs"      className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
                         <Building className="w-4 h-4" /> Organizaciones
@@ -215,6 +202,45 @@ export default function AdminDashboard() {
                     </Card>
                 </TabsContent>
 
+                {/* Intelligence / Analytics */}
+                <TabsContent value="intelligence" className="mt-4">
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-purple-500" /> Inteligencia de Empresas
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border">
+                                {analytics.length === 0 ? (
+                                    <p className="p-8 text-center text-muted-foreground text-sm">No hay datos de análisis disponibles.</p>
+                                ) : (
+                                    analytics.map((org) => (
+                                        <div key={org.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-sm">{org.name}</span>
+                                                    <Badge variant={org.status === 'Crítico' ? 'destructive' : org.status === 'Advertencia' ? 'warning' : 'default'} className={org.status === 'Advertencia' ? 'bg-orange-500' : ''}>
+                                                        {org.status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                                                    <span className="flex items-center gap-1 text-destructive font-semibold"><AlertTriangle className="w-3 h-3"/> C: {org.critical_findings}</span>
+                                                    <span className="flex items-center gap-1 text-orange-500 font-semibold"><AlertTriangle className="w-3 h-3"/> A: {org.high_findings}</span>
+                                                    <span className="flex items-center gap-1 text-blue-500">URLs: {org.total_urls}</span>
+                                                </div>
+                                            </div>
+                                            <Button variant="secondary" size="sm" onClick={() => setViewingAnalytics(org.id)}>
+                                                Ver Análisis
+                                            </Button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 {/* Organizations */}
                 <TabsContent value="orgs" className="mt-4">
                     <Card>
@@ -249,21 +275,9 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Select
-                                                        value={org.plan}
-                                                        onValueChange={(v) => handleChangePlan(org.id, v)}
-                                                        disabled={updatingPlan === org.id}
-                                                    >
-                                                        <SelectTrigger className="h-8 w-28 text-xs">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="free">Free</SelectItem>
-                                                            <SelectItem value="pro">Pro</SelectItem>
-                                                            <SelectItem value="ultimate">Ultimate</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    {updatingPlan === org.id && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                                                    <Button variant="outline" size="sm" onClick={() => setEditingOrg(org)}>
+                                                        Editar
+                                                    </Button>
                                                 </div>
                                             </div>
                                         )
@@ -311,20 +325,9 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Select
-                                                    value={u.role}
-                                                    onValueChange={(v) => handleChangeRole(u.id, v)}
-                                                    disabled={updatingRole === u.id}
-                                                >
-                                                    <SelectTrigger className="h-8 w-24 text-xs">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="user">User</SelectItem>
-                                                        <SelectItem value="admin">Admin</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                {updatingRole === u.id && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                                                <Button variant="outline" size="sm" onClick={() => setEditingUser(u)}>
+                                                    Editar
+                                                </Button>
                                             </div>
                                         </div>
                                     ))
@@ -367,6 +370,27 @@ export default function AdminDashboard() {
                     </Card>
                 </TabsContent>
             </Tabs>
+            
+            <EditOrgModal 
+                org={editingOrg} 
+                open={!!editingOrg} 
+                onOpenChange={(v) => !v && setEditingOrg(null)} 
+                onSuccess={() => loadData()} 
+            />
+            
+            <EditUserModal 
+                user={editingUser} 
+                orgs={orgs}
+                open={!!editingUser} 
+                onOpenChange={(v) => !v && setEditingUser(null)} 
+                onSuccess={() => loadData()} 
+            />
+
+            <OrgAnalyticsModal
+                orgId={viewingAnalytics}
+                open={!!viewingAnalytics}
+                onOpenChange={(v) => !v && setViewingAnalytics(null)}
+            />
         </div>
     )
 }

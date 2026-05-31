@@ -2,10 +2,14 @@
 import logging
 
 from django.utils import timezone
+from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+import stripe
+
+stripe.api_version = '2026-05-27.dahlia'
 
 from .models import User, Organization, Invitation, PLAN_MEMBER_LIMITS
 from .serializers import UserSerializer, ProfileSerializer, OrganizationSerializer
@@ -47,18 +51,18 @@ def profile(request):
 def organization_detail(request):
     """Get or update user's organization."""
     if not request.user.organization:
-        if request.method == 'GET':
-            return Response({'detail': 'No organization set.'}, status=404)
-        # Create org on PATCH if none exists
-        name = request.data.get('name')
+        # Auto-create organization if it doesn't exist to prevent 404s and 
+        # allow checkout sessions to work immediately.
+        name = request.data.get('name') if request.method == 'PATCH' else f"Org de {request.user.first_name or request.user.username}"
         if not name:
-            return Response(
-                {'name': ['Organization name is required.']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            name = f"Org de {request.user.email}"
+            
         org = Organization.objects.create(name=name, plan='free', url_limit=1)
         request.user.organization = org
-        request.user.save()
+        request.user.save(update_fields=['organization'])
+        
+        if request.method == 'GET':
+            return Response(OrganizationSerializer(org).data)
         return Response(OrganizationSerializer(org).data, status=status.HTTP_201_CREATED)
 
     if request.method == 'GET':
@@ -250,3 +254,144 @@ def leave_organization(request):
     user.organization = None
     user.save(update_fields=['organization'])
     return Response({'detail': 'Has salido de la organizacion.'})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_checkout_session(request):
+    """Create a Stripe Checkout Session for subscription upgrade."""
+    org = request.user.organization
+    if not org:
+        return Response({'detail': 'No organization.'}, status=400)
+
+    plan = request.data.get('plan')
+    if plan not in ['pro', 'ultimate']:
+        return Response({'detail': 'Plan invalido.'}, status=400)
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    
+    # We should define Stripe Prices in environment or here for simplicity
+    # For now, let's assume we map the plan to a generic price ID or just pass product data.
+    # To use Billing (Subscriptions), we MUST use a real price_id from the Stripe dashboard.
+    # If the user hasn't created prices, we can't fully create a subscription session without it.
+    # But for this implementation, we will use price IDs passed from frontend or mapped.
+    # Best practice is mapping them from env.
+    
+    price_id = None
+    if plan == 'pro' and hasattr(settings, 'STRIPE_PRICE_PRO') and settings.STRIPE_PRICE_PRO:
+        price_id = settings.STRIPE_PRICE_PRO
+    elif plan == 'ultimate' and hasattr(settings, 'STRIPE_PRICE_ULTIMATE') and settings.STRIPE_PRICE_ULTIMATE:
+        price_id = settings.STRIPE_PRICE_ULTIMATE
+
+    if price_id:
+        line_item = {
+            'price': price_id,
+            'quantity': 1,
+        }
+    else:
+        # Fallback to ad-hoc dynamic price if they are not defined yet in .env
+        amount = 1000 if plan == 'pro' else 2000  # $10.00 and $20.00
+        line_item = {
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {
+                    'name': f"Vigia {plan.capitalize()} Plan",
+                },
+                'unit_amount': amount,
+                'recurring': {
+                    'interval': 'month',
+                },
+            },
+            'quantity': 1,
+        }
+    
+    try:
+        # Create or get customer
+        customer_id = org.stripe_customer_id
+        if not customer_id:
+            customer_kwargs = {'metadata': {'org_id': org.id}}
+            # Solo pasamos el email a Stripe si es un email real, no el auto-generado
+            if request.user.email and not request.user.email.endswith('@clerk.user'):
+                customer_kwargs['email'] = request.user.email
+                
+            customer = stripe.Customer.create(**customer_kwargs)
+            customer_id = customer.id
+            org.stripe_customer_id = customer_id
+            org.save(update_fields=['stripe_customer_id'])
+
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            mode='subscription',
+            # Critical Rule: Omit payment_method_types to enable dynamic methods
+            line_items=[line_item],
+            success_url=f"{settings.FRONTEND_URL}/payments/success",
+            cancel_url=f"{settings.FRONTEND_URL}/payments/cancel",
+            client_reference_id=str(org.id),
+            metadata={'plan': plan}
+        )
+        return Response({'url': session.url})
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {e}")
+        return Response({'detail': str(e)}, status=500)
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+
+@csrf_exempt
+def stripe_webhook(request):
+    """Handle Stripe webhooks."""
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    webhook_secret = settings.STRIPE_WEBHOOK_SECRET
+    
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except ValueError as e:
+        # Invalid payload
+        print("Webhook Error: Invalid payload")
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        print("Webhook Error: Invalid signature")
+        return HttpResponse(status=400)
+
+    print(f"Webhook received event type: {event.type}")
+    
+    try:
+        # Handle the event
+        if event.type == 'checkout.session.completed':
+            session = event.data.object
+            org_id = getattr(session, 'client_reference_id', None)
+            metadata = getattr(session, 'metadata', {}) or {}
+            # Metadata is a StripeObject too, but it behaves like a dict. Let's be safe:
+            plan = metadata.get('plan') if hasattr(metadata, 'get') else getattr(metadata, 'plan', None)
+            subscription_id = getattr(session, 'subscription', None)
+            
+            if org_id and plan:
+                try:
+                    org = Organization.objects.get(id=org_id)
+                    org.set_plan(plan)
+                    if subscription_id:
+                        org.stripe_subscription_id = subscription_id
+                        org.save(update_fields=['stripe_subscription_id', 'updated_at'])
+                    print(f"Success! Updated org {org_id} to plan {plan}")
+                except Organization.DoesNotExist:
+                    print(f"Webhook warning: Organization {org_id} not found.")
+            else:
+                print(f"Webhook warning: Missing org_id ({org_id}) or plan ({plan}) in session.")
+                    
+        elif event.type == 'customer.subscription.updated':
+            subscription = event.data.object
+            # Optionally handle subscription cancellations or status changes
+            pass
+
+    except Exception as e:
+        print(f"Unhandled error in webhook: {e}")
+        import traceback
+        traceback.print_exc()
+
+    return HttpResponse(status=200)

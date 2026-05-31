@@ -15,4 +15,8 @@ urlpatterns = [
     path('invitations/<int:invitation_id>/revoke/', views.revoke_invitation, name='invitation-revoke'),
     path('invitations/<uuid:token>/info/', views.invitation_info, name='invitation-info'),
     path('invitations/<uuid:token>/accept/', views.accept_invitation, name='invitation-accept'),
+    
+    # Payments (Stripe)
+    path('payments/create-checkout-session/', views.create_checkout_session, name='create-checkout-session'),
+    path('payments/webhook/', views.stripe_webhook, name='stripe-webhook'),
 ]

@@ -32,3 +32,6 @@ python-decouple==3.8
 
 # Utilities
 django-filter==24.3
+
+# Payments
+stripe>=10.12.0

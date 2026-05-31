@@ -60,6 +60,7 @@ const plans = [
 export default function Plans() {
     const [orgData,  setOrgData]  = useState(null)
     const [loading,  setLoading]  = useState(true)
+    const [processingPayment, setProcessingPayment] = useState(false)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -76,6 +77,20 @@ export default function Plans() {
             console.error('Failed to load org data:', err)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleUpgrade = async (planKey) => {
+        setProcessingPayment(true)
+        try {
+            const res = await api.post('/auth/payments/create-checkout-session/', { plan: planKey })
+            if (res.data.url) {
+                window.location.href = res.data.url
+            }
+        } catch (error) {
+            console.error('Error creating checkout session:', error)
+            alert('Hubo un error al iniciar el proceso de pago. Inténtalo de nuevo.')
+            setProcessingPayment(false)
         }
     }
 
@@ -170,7 +185,8 @@ export default function Plans() {
                                     </div>
 
                                     <Button
-                                        disabled={isCurrent}
+                                        disabled={isCurrent || processingPayment}
+                                        onClick={() => !isCurrent && handleUpgrade(plan.key)}
                                         className={`w-full mt-auto ${
                                             isCurrent ? '' :
                                             isUpgrade ? `bg-gradient-to-r ${plan.gradient} hover:opacity-90 border-0 text-white` :
@@ -180,6 +196,8 @@ export default function Plans() {
                                     >
                                         {isCurrent ? (
                                             <><ShieldCheck className="w-4 h-4" /> Plan Actual</>
+                                        ) : processingPayment && isUpgrade ? (
+                                            <><span className="animate-spin mr-2">⚪</span> Procesando...</>
                                         ) : isUpgrade ? (
                                             <><Sparkles className="w-4 h-4" /> {plan.cta}</>
                                         ) : (

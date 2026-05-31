@@ -126,24 +126,32 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
             except User.DoesNotExist:
                 logger.warning(f"Auth: no user found with email {email}")
                 if not user:
-                    user = User.objects.create(
-                        clerk_user_id=clerk_user_id,
-                        username=clerk_user_id,
-                        email=email,
-                        first_name=first_name,
-                        last_name=last_name,
-                    )
-                    logger.info(f"Auto-created user for Clerk ID: {clerk_user_id}")
+                    from django.db import IntegrityError
+                    try:
+                        user = User.objects.create(
+                            clerk_user_id=clerk_user_id,
+                            username=clerk_user_id,
+                            email=email,
+                            first_name=first_name,
+                            last_name=last_name,
+                        )
+                        logger.info(f"Auto-created user for Clerk ID: {clerk_user_id}")
+                    except IntegrityError:
+                        user = User.objects.get(clerk_user_id=clerk_user_id)
         elif not user:
             # 3. No real email — create user with auto-generated email
-            user = User.objects.create(
-                clerk_user_id=clerk_user_id,
-                username=clerk_user_id,
-                email=email or f'{clerk_user_id}@clerk.user',
-                first_name=first_name,
-                last_name=last_name,
-            )
-            logger.info(f"Auto-created user for Clerk ID: {clerk_user_id}")
+            from django.db import IntegrityError
+            try:
+                user = User.objects.create(
+                    clerk_user_id=clerk_user_id,
+                    username=clerk_user_id,
+                    email=email or f'{clerk_user_id}@clerk.user',
+                    first_name=first_name,
+                    last_name=last_name,
+                )
+                logger.info(f"Auto-created user for Clerk ID: {clerk_user_id}")
+            except IntegrityError:
+                user = User.objects.get(clerk_user_id=clerk_user_id)
 
         return (user, payload)
 

@@ -34,6 +34,11 @@ class Organization(models.Model):
     name = models.CharField(max_length=200)
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='free')
     url_limit = models.IntegerField(default=1)
+    
+    # Stripe integration fields
+    stripe_customer_id = models.CharField(max_length=120, blank=True, null=True, help_text="Stripe Customer ID")
+    stripe_subscription_id = models.CharField(max_length=120, blank=True, null=True, help_text="Stripe Subscription ID")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

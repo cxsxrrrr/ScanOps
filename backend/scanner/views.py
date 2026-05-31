@@ -46,7 +46,10 @@ def trigger_scan(request):
         url_asset=url_asset,
         created_by=request.user,
     )
-    run_scan.delay(scan.pk)
+    
+    from celery import chain
+    from .tasks import process_scan_results
+    chain(run_scan.s(scan.pk), process_scan_results.s()).delay()
 
     return Response(
         ScanListSerializer(scan).data,

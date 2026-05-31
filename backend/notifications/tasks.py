@@ -116,9 +116,13 @@ def _get_org_data(organization):
 
 @shared_task
 def send_scheduled_reports():
-    """Check and send scheduled email reports."""
-    from .models import NotificationConfig, EmailLog
+    """Trigger scheduled scans and send email reports when finished."""
+    from .models import NotificationConfig
     from accounts.models import Organization
+    from urls_manager.models import URLAsset
+    from scanner.models import Scan
+    from scanner.tasks import run_scan, process_scan_results
+    from celery import chord, chain
 
     configs = NotificationConfig.objects.filter(enabled=True).select_related('organization')
 
@@ -137,24 +141,69 @@ def send_scheduled_reports():
 
         if should_send:
             try:
-                _send_report_email(config.organization)
+                org = config.organization
+                urls = URLAsset.objects.filter(organization=org)
+                
+                if not urls.exists():
+                    # Nothing to scan, just update timestamp
+                    config.last_sent_at = now
+                    config.save(update_fields=['last_sent_at'])
+                    continue
+
+                # Create scans for all URLs
+                scan_ids = []
+                for u in urls:
+                    scan = Scan.objects.create(url_asset=u) # System scheduled scan
+                    scan_ids.append(scan.id)
+
+                # Orchestrate execution:
+                # 1. Run scans and process results for each URL in parallel
+                # 2. When ALL are done, trigger the report callback
+                header = [
+                    chain(run_scan.s(sid), process_scan_results.s()) 
+                    for sid in scan_ids
+                ]
+                
+                callback = send_report_email_callback.si(org.id, config.id)
+                chord(header)(callback)
+
+                # We consider it "sent" from a scheduling perspective once triggered
                 config.last_sent_at = now
                 config.save(update_fields=['last_sent_at'])
-
-                EmailLog.objects.create(
-                    organization=config.organization,
-                    email_type='scheduled',
-                    status='sent',
-                )
-                logger.info(f"Scheduled report sent for {config.organization.name}")
+                logger.info(f"Scheduled scans triggered for {org.name} ({len(scan_ids)} URLs)")
+                
             except Exception as e:
-                EmailLog.objects.create(
-                    organization=config.organization,
-                    email_type='scheduled',
-                    status='failed',
-                    error=str(e),
-                )
-                logger.exception(f"Failed to send report for {config.organization.name}: {e}")
+                logger.exception(f"Failed to trigger scheduled scans for {config.organization.name}: {e}")
+
+
+@shared_task
+def send_report_email_callback(org_id, config_id):
+    """Callback triggered after all scheduled scans finish for an organization."""
+    from accounts.models import Organization
+    from .models import NotificationConfig, EmailLog
+    
+    try:
+        org = Organization.objects.get(pk=org_id)
+    except Organization.DoesNotExist:
+        return
+        
+    try:
+        _send_report_email(org)
+        
+        EmailLog.objects.create(
+            organization=org,
+            email_type='scheduled',
+            status='sent',
+        )
+        logger.info(f"Scheduled report sent successfully for {org.name}")
+    except Exception as e:
+        EmailLog.objects.create(
+            organization=org,
+            email_type='scheduled',
+            status='failed',
+            error=str(e),
+        )
+        logger.exception(f"Failed to send scheduled report for {org.name}: {e}")
 
 
 @shared_task

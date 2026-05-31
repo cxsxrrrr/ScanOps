@@ -12,6 +12,8 @@ import Report from './pages/Report'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Plans from './pages/Plans'
+import PaymentSuccess from './pages/PaymentSuccess'
+import PaymentCancel from './pages/PaymentCancel'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import JoinTeam from './pages/JoinTeam'
 
@@ -38,6 +40,8 @@ function AuthenticatedApp() {
                         <Route path="scans" element={<ScanHistory />} />
                         <Route path="scans/:scanId/report" element={<Report />} />
                         <Route path="plans" element={<Plans />} />
+                        <Route path="payments/success" element={<PaymentSuccess />} />
+                        <Route path="payments/cancel" element={<PaymentCancel />} />
                         <Route path="profile" element={<Profile />} />
                         <Route path="settings" element={<Settings />} />
                         <Route path="admin" element={<AdminDashboard />} />
