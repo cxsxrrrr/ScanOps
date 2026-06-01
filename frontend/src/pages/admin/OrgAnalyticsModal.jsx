@@ -44,7 +44,7 @@ export function OrgAnalyticsModal({ orgId, open, onOpenChange }) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-2xl">
                         <Activity className="w-6 h-6 text-purple-500" /> 
@@ -128,7 +128,7 @@ export function OrgAnalyticsModal({ orgId, open, onOpenChange }) {
                                     <CardTitle className="text-sm">Estado de las URLs</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                                         {data.urls.length === 0 ? <p className="text-xs text-muted-foreground">Sin URLs</p> : null}
                                         {data.urls.map(url => (
                                             <div key={url.id} className="flex flex-col p-3 bg-muted/30 rounded-lg text-sm border">
@@ -155,7 +155,7 @@ export function OrgAnalyticsModal({ orgId, open, onOpenChange }) {
                                     <CardTitle className="text-sm">Usuarios del Equipo</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                                         {data.users.length === 0 ? <p className="text-xs text-muted-foreground">Sin usuarios</p> : null}
                                         {data.users.map(user => (
                                             <div key={user.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg text-sm border">
