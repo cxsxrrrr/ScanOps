@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
     ShieldCheck, Users, ScanSearch, AlertTriangle,
     Mail, Loader2, RefreshCw, XCircle, Building,
     Crown, Zap, Shield, Check, BarChart3, CheckCircle2,
-    Clock, Activity,
+    Clock, Activity, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
 import { EditOrgModal } from './EditOrgModal'
@@ -37,6 +38,17 @@ export default function AdminDashboard() {
     const [editingOrg,    setEditingOrg]    = useState(null)
     const [editingUser,   setEditingUser]   = useState(null)
     const [viewingAnalytics, setViewingAnalytics] = useState(null)
+
+    const [searchAnalytics, setSearchAnalytics] = useState('')
+    const [pageAnalytics, setPageAnalytics] = useState(1)
+    
+    const [searchOrgs, setSearchOrgs] = useState('')
+    const [pageOrgs, setPageOrgs] = useState(1)
+
+    const [searchUsers, setSearchUsers] = useState('')
+    const [pageUsers, setPageUsers] = useState(1)
+
+    const ITEMS_PER_PAGE = 10
 
     useEffect(() => {
         const controller = new AbortController()
@@ -99,6 +111,18 @@ export default function AdminDashboard() {
         { label: 'Hallazgos Altos',   value: metrics.findings.high,            sub: `${metrics.findings.total} total`,                 icon: AlertTriangle, color: 'from-red-500 to-red-600' },
         { label: 'Emails Enviados',   value: metrics.emails.sent_last_30d,     sub: `${metrics.emails.failed_last_30d} fallidos`,      icon: Mail,         color: 'from-emerald-500 to-emerald-600' },
     ]
+
+    const filteredAnalytics = analytics.filter(org => org.name.toLowerCase().includes(searchAnalytics.toLowerCase()))
+    const paginatedAnalytics = filteredAnalytics.slice((pageAnalytics - 1) * ITEMS_PER_PAGE, pageAnalytics * ITEMS_PER_PAGE)
+    const totalPagesAnalytics = Math.ceil(filteredAnalytics.length / ITEMS_PER_PAGE) || 1
+
+    const filteredOrgs = orgs.filter(org => org.name.toLowerCase().includes(searchOrgs.toLowerCase()))
+    const paginatedOrgs = filteredOrgs.slice((pageOrgs - 1) * ITEMS_PER_PAGE, pageOrgs * ITEMS_PER_PAGE)
+    const totalPagesOrgs = Math.ceil(filteredOrgs.length / ITEMS_PER_PAGE) || 1
+
+    const filteredUsers = users.filter(user => user.email.toLowerCase().includes(searchUsers.toLowerCase()))
+    const paginatedUsers = filteredUsers.slice((pageUsers - 1) * ITEMS_PER_PAGE, pageUsers * ITEMS_PER_PAGE)
+    const totalPagesUsers = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE) || 1
 
     return (
         <div className="space-y-6">
@@ -205,17 +229,26 @@ export default function AdminDashboard() {
                 {/* Intelligence / Analytics */}
                 <TabsContent value="intelligence" className="mt-4">
                     <Card>
-                        <CardHeader className="pb-3">
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Activity className="w-4 h-4 text-purple-500" /> Inteligencia de Empresas
                             </CardTitle>
+                            <div className="relative w-64">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Buscar empresa..."
+                                    className="pl-8"
+                                    value={searchAnalytics}
+                                    onChange={(e) => { setSearchAnalytics(e.target.value); setPageAnalytics(1); }}
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border">
-                                {analytics.length === 0 ? (
-                                    <p className="p-8 text-center text-muted-foreground text-sm">No hay datos de análisis disponibles.</p>
+                                {paginatedAnalytics.length === 0 ? (
+                                    <p className="p-8 text-center text-muted-foreground text-sm">No se encontraron resultados.</p>
                                 ) : (
-                                    analytics.map((org) => (
+                                    paginatedAnalytics.map((org) => (
                                         <div key={org.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
@@ -237,6 +270,20 @@ export default function AdminDashboard() {
                                     ))
                                 )}
                             </div>
+                            
+                            {totalPagesAnalytics > 1 && (
+                                <div className="flex items-center justify-between px-4 py-3 border-t">
+                                    <span className="text-sm text-muted-foreground">Página {pageAnalytics} de {totalPagesAnalytics}</span>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => setPageAnalytics(p => Math.max(1, p - 1))} disabled={pageAnalytics === 1}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => setPageAnalytics(p => Math.min(totalPagesAnalytics, p + 1))} disabled={pageAnalytics === totalPagesAnalytics}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -244,17 +291,26 @@ export default function AdminDashboard() {
                 {/* Organizations */}
                 <TabsContent value="orgs" className="mt-4">
                     <Card>
-                        <CardHeader className="pb-3">
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Building className="w-4 h-4 text-purple-500" /> Organizaciones ({orgs.length})
                             </CardTitle>
+                            <div className="relative w-64">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Buscar organización..."
+                                    className="pl-8"
+                                    value={searchOrgs}
+                                    onChange={(e) => { setSearchOrgs(e.target.value); setPageOrgs(1); }}
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border">
-                                {orgs.length === 0 ? (
-                                    <p className="p-8 text-center text-muted-foreground text-sm">No hay organizaciones registradas.</p>
+                                {paginatedOrgs.length === 0 ? (
+                                    <p className="p-8 text-center text-muted-foreground text-sm">No se encontraron resultados.</p>
                                 ) : (
-                                    orgs.map((org) => {
+                                    paginatedOrgs.map((org) => {
                                         const cfg = planConfig[org.plan] || planConfig.free
                                         return (
                                             <div key={org.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
@@ -284,6 +340,20 @@ export default function AdminDashboard() {
                                     })
                                 )}
                             </div>
+                            
+                            {totalPagesOrgs > 1 && (
+                                <div className="flex items-center justify-between px-4 py-3 border-t">
+                                    <span className="text-sm text-muted-foreground">Página {pageOrgs} de {totalPagesOrgs}</span>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => setPageOrgs(p => Math.max(1, p - 1))} disabled={pageOrgs === 1}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => setPageOrgs(p => Math.min(totalPagesOrgs, p + 1))} disabled={pageOrgs === totalPagesOrgs}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -291,17 +361,26 @@ export default function AdminDashboard() {
                 {/* Users */}
                 <TabsContent value="users" className="mt-4">
                     <Card>
-                        <CardHeader className="pb-3">
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Users className="w-4 h-4 text-blue-500" /> Usuarios ({users.length})
                             </CardTitle>
+                            <div className="relative w-64">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Buscar usuario..."
+                                    className="pl-8"
+                                    value={searchUsers}
+                                    onChange={(e) => { setSearchUsers(e.target.value); setPageUsers(1); }}
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border">
-                                {users.length === 0 ? (
-                                    <p className="p-8 text-center text-muted-foreground text-sm">No hay usuarios registrados.</p>
+                                {paginatedUsers.length === 0 ? (
+                                    <p className="p-8 text-center text-muted-foreground text-sm">No se encontraron resultados.</p>
                                 ) : (
-                                    users.map((u) => (
+                                    paginatedUsers.map((u) => (
                                         <div key={u.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
                                             <div>
                                                 <p className="font-medium text-sm">{u.email}</p>
@@ -333,6 +412,20 @@ export default function AdminDashboard() {
                                     ))
                                 )}
                             </div>
+                            
+                            {totalPagesUsers > 1 && (
+                                <div className="flex items-center justify-between px-4 py-3 border-t">
+                                    <span className="text-sm text-muted-foreground">Página {pageUsers} de {totalPagesUsers}</span>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => setPageUsers(p => Math.max(1, p - 1))} disabled={pageUsers === 1}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => setPageUsers(p => Math.min(totalPagesUsers, p + 1))} disabled={pageUsers === totalPagesUsers}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
