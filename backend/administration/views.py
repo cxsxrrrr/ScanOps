@@ -261,13 +261,13 @@ def analytics_organizations(request):
     from django.db.models import Count, Q, Max, Sum
     
     orgs = Organization.objects.annotate(
-        total_urls=Count('urls', distinct=True),
+        total_urls=Count('url_assets', distinct=True),
         total_users=Count('users', distinct=True),
-        total_scans=Count('urls__scans', distinct=True),
-        last_scan_date=Max('urls__scans__started_at'),
-        critical_findings=Count('urls__scans__findings', filter=Q(urls__scans__findings__severity='CRITICAL'), distinct=True),
-        high_findings=Count('urls__scans__findings', filter=Q(urls__scans__findings__severity='HIGH'), distinct=True),
-        medium_findings=Count('urls__scans__findings', filter=Q(urls__scans__findings__severity='MEDIUM'), distinct=True),
+        total_scans=Count('url_assets__scans', distinct=True),
+        last_scan_date=Max('url_assets__scans__started_at'),
+        critical_findings=Count('url_assets__scans__findings', filter=Q(url_assets__scans__findings__severity='CRITICAL'), distinct=True),
+        high_findings=Count('url_assets__scans__findings', filter=Q(url_assets__scans__findings__severity='HIGH'), distinct=True),
+        medium_findings=Count('url_assets__scans__findings', filter=Q(url_assets__scans__findings__severity='MEDIUM'), distinct=True),
     ).order_by('-critical_findings', '-high_findings')
 
     data = []
@@ -311,7 +311,7 @@ def analytics_organization_detail(request, pk):
     users_data = org.users.values('id', 'email', 'role', 'last_login')
 
     # URLs and their last scan status
-    urls = org.urls.all()
+    urls = org.url_assets.all()
     urls_data = []
     
     scan_history = []
@@ -323,7 +323,7 @@ def analytics_organization_detail(request, pk):
         url_info = {
             'id': url.id,
             'url': url.url,
-            'status': url.status,
+            'status': url.last_scan_status,
             'last_scan_status': last_scan.status if last_scan else None,
             'last_scan_date': last_scan.started_at if last_scan else None,
             'critical': last_scan.critical_count if last_scan else 0,
