@@ -131,7 +131,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 # --- CORS ---
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173').rstrip('/')
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
 ]

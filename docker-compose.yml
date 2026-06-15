@@ -5,7 +5,7 @@
 #          Frontend (Nginx), y Stripe CLI (webhooks).
 #
 # Uso:
-#   1. Copia .env.docker.example a .env.docker y rellena tus claves
+#   1. Crea el archivo .env en la raiz con tus claves (ver .env.docker.example)
 #   2. docker compose up --build -d
 #   3. Abre http://localhost en tu navegador
 # =============================================================================
@@ -49,7 +49,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - .env.docker
+      - .env
     environment:
       - DB_HOST=db
       - DB_PORT=5432
@@ -76,7 +76,7 @@ services:
     restart: unless-stopped
     command: celery -A auditoria worker -l info --concurrency=2
     env_file:
-      - .env.docker
+      - .env
     environment:
       - DB_HOST=db
       - DB_PORT=5432
@@ -98,7 +98,7 @@ services:
     restart: unless-stopped
     command: celery -A auditoria beat -l info
     env_file:
-      - .env.docker
+      - .env
     environment:
       - DB_HOST=db
       - DB_PORT=5432
@@ -126,9 +126,8 @@ services:
     depends_on:
       - backend
 
-  # ── Stripe CLI (webhook forwarding, optional) ─────────────────────
-  # Descomenta este servicio si necesitas recibir webhooks de Stripe en local.
-  # Requiere STRIPE_API_KEY en el .env.docker
+  # ── Stripe CLI (webhook forwarding, opcional) ──────────────────────
+  # Descomenta si necesitas recibir webhooks de Stripe en el contenedor.
   #
   # stripe-cli:
   #   image: stripe/stripe-cli:latest
