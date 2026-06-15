@@ -72,3 +72,21 @@ class ProfileSerializer(serializers.ModelSerializer):
             'organization', 'accepted_terms_at',
         ]
         read_only_fields = ['id', 'email', 'role', 'accepted_terms_at']
+
+
+class OrganizationLLMConfigSerializer(serializers.ModelSerializer):
+    """Serializer for organization LLM config."""
+    
+    class Meta:
+        from .models import OrganizationLLMConfig
+        model = OrganizationLLMConfig
+        fields = ['provider', 'api_key', 'model_name']
+        extra_kwargs = {
+            'api_key': {'write_only': True}
+        }
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Indicate if a key is set without revealing it
+        ret['has_api_key'] = bool(instance.api_key)
+        return ret

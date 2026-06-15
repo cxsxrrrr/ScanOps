@@ -102,6 +102,10 @@ class User(AbstractUser):
         return f"{self.email} ({self.organization})"
 
     @property
+    def has_real_email(self):
+        return bool(self.email) and not self.email.endswith('@clerk.user')
+
+    @property
     def is_admin_user(self):
         return self.role == 'admin'
 
@@ -139,3 +143,34 @@ class Invitation(models.Model):
     @property
     def is_active(self):
         return self.accepted_by is None
+
+
+class OrganizationLLMConfig(models.Model):
+    """Custom LLM configuration for an organization."""
+    
+    PROVIDER_CHOICES = [
+        ('default', 'Default (Gemini)'),
+        ('opencode_go', 'OpenCode Go'),
+        ('openai', 'OpenAI'),
+        ('anthropic', 'Anthropic'),
+        ('gemini', 'Google Gemini'),
+    ]
+
+    organization = models.OneToOneField(
+        Organization, 
+        on_delete=models.CASCADE, 
+        related_name='llm_config'
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='default')
+    api_key = models.CharField(max_length=512, blank=True)
+    model_name = models.CharField(max_length=100, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"LLM Config for {self.organization.name} ({self.provider})"
+

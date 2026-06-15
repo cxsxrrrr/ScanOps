@@ -44,7 +44,11 @@ def generate_ai_summary(self, scan_id):
         return
 
     # Generate AI summary
-    result = generate_executive_summary(findings_list, scan.url_asset.url)
+    llm_config = None
+    if hasattr(scan.url_asset.organization, 'llm_config'):
+        llm_config = scan.url_asset.organization.llm_config
+
+    result = generate_executive_summary(findings_list, scan.url_asset.url, config=llm_config)
 
     ExecutiveSummary.objects.create(
         scan=scan,

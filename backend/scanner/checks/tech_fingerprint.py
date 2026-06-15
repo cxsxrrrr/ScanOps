@@ -354,10 +354,10 @@ KNOWN_VULNERABILITIES = {
     ],
     'PHP': [
         {
-            'below': '8.3.4',
-            'severity': 'HIGH',
-            'cves': 'CVE-2024-2756, CVE-2024-3096',
-            'description': 'Cookie bypass and password_verify() issues.',
+            'below': '7.4.0',
+            'severity': 'CRITICAL',
+            'cves': 'Multiple CVEs',
+            'description': 'PHP 7.3 and earlier are end-of-life with unpatched vulnerabilities.',
         },
         {
             'below': '8.1.0',
@@ -366,10 +366,10 @@ KNOWN_VULNERABILITIES = {
             'description': 'XML external entity and buffer overflow vulnerabilities.',
         },
         {
-            'below': '7.4.0',
-            'severity': 'CRITICAL',
-            'cves': 'Multiple CVEs',
-            'description': 'PHP 7.3 and earlier are end-of-life with unpatched vulnerabilities.',
+            'below': '8.3.4',
+            'severity': 'HIGH',
+            'cves': 'CVE-2024-2756, CVE-2024-3096',
+            'description': 'Cookie bypass and password_verify() issues.',
         },
     ],
     'jQuery': [

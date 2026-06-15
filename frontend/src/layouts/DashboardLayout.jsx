@@ -183,7 +183,7 @@ export default function DashboardLayout() {
 
     return (
         <TooltipProvider delayDuration={0}>
-            <div className="flex h-screen overflow-hidden gradient-bg">
+            <div className="fixed inset-0 flex overflow-hidden gradient-bg">
 
                 {/* Mobile overlay */}
                 <AnimatePresence>

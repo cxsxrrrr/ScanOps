@@ -1,0 +1,143 @@
+# =============================================================================
+# Vigia — Docker Compose (Full Stack)
+# =============================================================================
+# Incluye: PostgreSQL, Redis, Django Backend, Celery Worker, Celery Beat,
+#          Frontend (Nginx), y Stripe CLI (webhooks).
+#
+# Uso:
+#   1. Copia .env.docker.example a .env.docker y rellena tus claves
+#   2. docker compose up --build -d
+#   3. Abre http://localhost en tu navegador
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-auditoria_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-auditoria_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis (Celery broker) ──────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Django Backend ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_TASK_EAGER_PROPAGATES=False
+      - FRONTEND_URL=http://localhost
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend_logs:/app/logs
+      - backend_static:/app/staticfiles
+
+  # ── Celery Worker ──────────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A auditoria worker -l info --concurrency=2
+    env_file:
+      - .env.docker
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_TASK_EAGER_PROPAGATES=False
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Celery Beat (scheduler) ────────────────────────────────────────
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A auditoria beat -l info
+    env_file:
+      - .env.docker
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_TASK_EAGER_PROPAGATES=False
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Frontend (Nginx + React) ───────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # ── Stripe CLI (webhook forwarding, optional) ─────────────────────
+  # Descomenta este servicio si necesitas recibir webhooks de Stripe en local.
+  # Requiere STRIPE_API_KEY en el .env.docker
+  #
+  # stripe-cli:
+  #   image: stripe/stripe-cli:latest
+  #   command: listen --forward-to http://backend:8000/api/auth/payments/webhook/ --api-key ${STRIPE_SECRET_KEY}
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+  backend_logs:
+  backend_static:

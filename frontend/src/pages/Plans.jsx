@@ -9,8 +9,19 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
     Sparkles, Check, Crown, Zap, Shield, Globe,
-    ScanSearch, FileText, Brain, Headphones, ShieldCheck,
+    ScanSearch, FileText, Brain, Headphones, ShieldCheck, CreditCard, Loader2
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { toast } from 'sonner'
 
 const plans = [
     {
@@ -61,6 +72,9 @@ export default function Plans() {
     const [orgData,  setOrgData]  = useState(null)
     const [loading,  setLoading]  = useState(true)
     const [processingPayment, setProcessingPayment] = useState(false)
+    const [managingBilling, setManagingBilling] = useState(false)
+    const [downgradeConfirmOpen, setDowngradeConfirmOpen] = useState(false)
+    const [downgrading, setDowngrading] = useState(false)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -80,7 +94,12 @@ export default function Plans() {
         }
     }
 
-    const handleUpgrade = async (planKey) => {
+    const handlePlanChange = async (planKey, isUpgrade) => {
+        if (!isUpgrade && planKey === 'free') {
+            setDowngradeConfirmOpen(true)
+            return
+        }
+        
         setProcessingPayment(true)
         try {
             const res = await api.post('/auth/payments/create-checkout-session/', { plan: planKey })
@@ -89,8 +108,39 @@ export default function Plans() {
             }
         } catch (error) {
             console.error('Error creating checkout session:', error)
-            alert('Hubo un error al iniciar el proceso de pago. Inténtalo de nuevo.')
+            toast.error('Hubo un error al iniciar el proceso de pago. Inténtalo de nuevo.')
             setProcessingPayment(false)
+        }
+    }
+
+    const handleDowngradeToFree = async () => {
+        setDowngrading(true)
+        try {
+            const res = await api.post('/auth/payments/cancel-subscription/')
+            toast.success(res.data.detail || 'Suscripción cancelada.')
+            setDowngradeConfirmOpen(false)
+            // Recargar datos
+            const controller = new AbortController()
+            await loadOrgData(controller.signal)
+        } catch (error) {
+            console.error('Error downgrading:', error)
+            toast.error(error.response?.data?.detail || 'Error al cancelar la suscripción.')
+        } finally {
+            setDowngrading(false)
+        }
+    }
+
+    const handleManageBilling = async () => {
+        setManagingBilling(true)
+        try {
+            const res = await api.post('/auth/payments/create-portal-session/')
+            if (res.data.url) {
+                window.location.href = res.data.url
+            }
+        } catch (error) {
+            console.error('Error opening portal:', error)
+            toast.error(error.response?.data?.detail || 'Error al abrir el portal de facturación.')
+            setManagingBilling(false)
         }
     }
 
@@ -120,6 +170,19 @@ export default function Plans() {
                 <p className="text-muted-foreground mt-2 max-w-lg mx-auto text-sm">
                     Protege tus sitios web con el plan que mejor se adapte a tu negocio.
                 </p>
+                {currentPlan !== 'free' && (
+                    <div className="mt-6 flex justify-center">
+                        <Button 
+                            variant="outline" 
+                            onClick={handleManageBilling} 
+                            disabled={managingBilling}
+                            className="gap-2"
+                        >
+                            {managingBilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                            Gestionar Facturación
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Cards */}
@@ -186,7 +249,7 @@ export default function Plans() {
 
                                     <Button
                                         disabled={isCurrent || processingPayment}
-                                        onClick={() => !isCurrent && handleUpgrade(plan.key)}
+                                        onClick={() => !isCurrent && handlePlanChange(plan.key, isUpgrade)}
                                         className={`w-full mt-auto ${
                                             isCurrent ? '' :
                                             isUpgrade ? `bg-gradient-to-r ${plan.gradient} hover:opacity-90 border-0 text-white` :
@@ -197,11 +260,11 @@ export default function Plans() {
                                         {isCurrent ? (
                                             <><ShieldCheck className="w-4 h-4" /> Plan Actual</>
                                         ) : processingPayment && isUpgrade ? (
-                                            <><span className="animate-spin mr-2">⚪</span> Procesando...</>
+                                            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Procesando...</>
                                         ) : isUpgrade ? (
                                             <><Sparkles className="w-4 h-4" /> {plan.cta}</>
                                         ) : (
-                                            'Cambiar plan'
+                                            'Cambiar a ' + plan.name
                                         )}
                                     </Button>
                                 </CardContent>
@@ -222,6 +285,24 @@ export default function Plans() {
                     </CardContent>
                 </Card>
             </div>
+
+            <AlertDialog open={downgradeConfirmOpen} onOpenChange={setDowngradeConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro de cancelar tu suscripción?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Al confirmar, tu plan cambiará a <strong>Free</strong>. La cancelación en Stripe se programará para el final del ciclo de facturación actual. Podrás seguir disfrutando de los beneficios de tu plan hasta entonces.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={downgrading}>Conservar mi plan</AlertDialogCancel>
+                        <AlertDialogAction onClick={(e) => { e.preventDefault(); handleDowngradeToFree(); }} disabled={downgrading} className="bg-red-500 hover:bg-red-600">
+                            {downgrading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Sí, Cancelar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

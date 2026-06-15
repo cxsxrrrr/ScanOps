@@ -170,6 +170,7 @@ RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='onboarding@resend.dev')
 # --- Stripe ---
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
+STRIPE_PORTAL_CONFIG_ID = config('STRIPE_PORTAL_CONFIG_ID', default='')
 
 # --- Scan Engine Config ---
 SCAN_TIMEOUT = 30  # seconds per check

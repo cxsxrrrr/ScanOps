@@ -68,7 +68,6 @@ class Finding(models.Model):
     ]
 
     CATEGORY_CHOICES = [
-        # Existing categories
         ('headers', 'HTTP Headers'),
         ('ssl', 'SSL/TLS'),
         ('cookies', 'Cookies'),

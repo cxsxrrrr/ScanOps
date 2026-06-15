@@ -272,7 +272,7 @@ def send_manual_report(org_id):
 
 def _send_report_email(organization):
     """Send a scheduled report email via Resend with branded template."""
-    users = list(organization.users.values_list('email', flat=True))
+    users = [e for e in organization.users.values_list('email', flat=True) if e and not e.endswith('@clerk.user')]
     if not users:
         return
 
@@ -328,7 +328,7 @@ def _send_report_email(organization):
 
 def _send_alert_email(organization, scan, high_findings):
     """Send high-severity alert email via Resend with branded template."""
-    users = list(organization.users.values_list('email', flat=True))
+    users = [e for e in organization.users.values_list('email', flat=True) if e and not e.endswith('@clerk.user')]
     if not users:
         return
 

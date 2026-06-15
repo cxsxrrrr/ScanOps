@@ -273,16 +273,51 @@ class ScanEngine:
                 })
 
     def _check_cookie_security(self, response):
-        """Check cookie security flags."""
+        """Check cookie security flags and attributes."""
+        session_cookie_names = {
+            'session', 'sessionid', 'phpsessid', 'jsessionid',
+            'asp.net_sessionid', 'laravel_session', 'connect.sid',
+            '_session_id', 'rack.session',
+        }
+
         for cookie in response.cookies:
             issues = []
+            name_lower = cookie.name.lower()
 
             if not cookie.secure:
                 issues.append('Secure flag missing')
             if not cookie.has_nonstandard_attr('HttpOnly') and 'httponly' not in str(cookie).lower():
                 issues.append('HttpOnly flag missing')
-            if 'samesite' not in str(cookie).lower():
+
+            samesite = None
+            cookie_str = str(cookie).lower()
+            if 'samesite=strict' in cookie_str or cookie.has_nonstandard_attr('SameSite') and 'strict' in cookie_str:
+                samesite = 'strict'
+            elif 'samesite=lax' in cookie_str:
+                samesite = 'lax'
+            elif 'samesite=none' in cookie_str:
+                samesite = 'none'
+            elif 'samesite' not in cookie_str:
                 issues.append('SameSite attribute missing')
+
+            if samesite == 'none' and not cookie.secure:
+                issues.append('SameSite=None without Secure (will be rejected by browsers)')
+
+            is_session_cookie = (
+                name_lower in session_cookie_names
+                or 'session' in name_lower
+                or 'token' in name_lower
+                or 'auth' in name_lower
+                or 'csrf' in name_lower
+            )
+
+            if samesite == 'lax' and is_session_cookie:
+                issues.append('SameSite=Lax on session cookie (Strict recommended for sensitive sessions)')
+
+            cookie_path = getattr(cookie, 'path', '/')
+            if not name_lower.startswith('__host-') and is_session_cookie and cookie.secure:
+                if cookie_path != '/':
+                    pass
 
             if issues:
                 self.findings.append({
@@ -292,6 +327,24 @@ class ScanEngine:
                     'description': f'Cookie "{cookie.name}" has security issues: {", ".join(issues)}.',
                     'recommendation': 'Set Secure, HttpOnly, and SameSite flags on all cookies.',
                     'evidence': f'Cookie: {cookie.name}, Issues: {", ".join(issues)}',
+                })
+
+            if samesite == 'none':
+                self.findings.append({
+                    'title': f'Cookie with SameSite=None: {cookie.name}',
+                    'severity': 'HIGH',
+                    'category': 'cookies',
+                    'description': (
+                        f'Cookie "{cookie.name}" has SameSite=None, which allows '
+                        f'the cookie to be sent in cross-site requests. This '
+                        f'enables CSRF attacks.'
+                    ),
+                    'recommendation': (
+                        'Set SameSite=Strict or SameSite=Lax for all cookies. '
+                        'Only use SameSite=None with Secure if cross-site usage '
+                        'is absolutely required.'
+                    ),
+                    'evidence': f'Cookie: {cookie.name}, SameSite: None',
                 })
 
     def _check_info_disclosure(self, response):
@@ -323,7 +376,7 @@ class ScanEngine:
             })
 
     def _check_ssl(self, hostname):
-        """Check SSL/TLS certificate details."""
+        """Check SSL/TLS certificate details, cipher suites, and chain validity."""
         try:
             context = ssl.create_default_context()
             with socket.create_connection((hostname, 443), timeout=self.timeout) as sock:
@@ -331,9 +384,11 @@ class ScanEngine:
                     cert = ssock.getpeercert()
                     protocol = ssock.version()
 
-                    # Check expiry
                     not_after = ssl.cert_time_to_seconds(cert['notAfter'])
                     days_until_expiry = (not_after - datetime.now().timestamp()) / 86400
+
+                    not_before = ssl.cert_time_to_seconds(cert.get('notBefore', ''))
+                    days_since_issued = (datetime.now().timestamp() - not_before) / 86400 if not_before else 0
 
                     if days_until_expiry < 30:
                         self.findings.append({
@@ -345,7 +400,6 @@ class ScanEngine:
                             'evidence': f'Expires: {cert["notAfter"]}',
                         })
 
-                    # Check protocol version
                     if protocol in ('TLSv1', 'TLSv1.1'):
                         self.findings.append({
                             'title': 'Outdated TLS Version',
@@ -354,6 +408,115 @@ class ScanEngine:
                             'description': f'Server supports outdated {protocol}.',
                             'recommendation': 'Disable TLS 1.0 and 1.1. Use TLS 1.2 or 1.3.',
                             'evidence': f'Protocol: {protocol}',
+                        })
+
+                    subject_cn = ''
+                    subject_org = ''
+                    for field in cert.get('subject', ()):
+                        for key, value in field:
+                            if key == 'commonName':
+                                subject_cn = value
+                            if key == 'organizationName':
+                                subject_org = value
+
+                    san_list = []
+                    for ext_type, ext_data in cert.get('subjectAltName', ()):
+                        if ext_type == 'DNS':
+                            san_list.append(ext_data)
+
+                    if subject_cn and hostname.lower() != subject_cn.lower():
+                        san_match = any(
+                            san.lower() == hostname.lower() or
+                            (san.startswith('*.') and hostname.lower().endswith(san[2:].lower()))
+                            for san in san_list
+                        )
+                        if not san_match:
+                            self.findings.append({
+                                'title': 'SSL Certificate Common Name Mismatch',
+                                'severity': 'HIGH',
+                                'category': 'ssl',
+                                'description': (
+                                    f'The SSL certificate is issued for "{subject_cn}" '
+                                    f'but the hostname is "{hostname}". This causes browser '
+                                    f'warnings and may indicate a misconfiguration.'
+                                ),
+                                'recommendation': (
+                                    'Obtain a certificate that matches the server hostname. '
+                                    'Use a SAN certificate or wildcard certificate for multiple subdomains.'
+                                ),
+                                'evidence': f'CN: {subject_cn}, Hostname: {hostname}',
+                            })
+
+                    issuer_org = ''
+                    for field in cert.get('issuer', ()):
+                        for key, value in field:
+                            if key == 'organizationName':
+                                issuer_org = value
+                            if key == 'commonName':
+                                issuer_cn = value
+
+                    self_signed_indicators = [
+                        issuer_org == subject_org and subject_org,
+                        'self-signed' in str(cert.get('issuer', '')).lower(),
+                        subject_cn == hostname and issuer_org == subject_org,
+                    ]
+                    if any(self_signed_indicators) and subject_cn:
+                        self.findings.append({
+                            'title': 'Self-Signed SSL Certificate Detected',
+                            'severity': 'MEDIUM',
+                            'category': 'ssl',
+                            'description': (
+                                f'The SSL certificate appears to be self-signed '
+                                f'(issued by "{issuer_org or subject_cn}"). Self-signed '
+                                f'certificates are not trusted by browsers and can be '
+                                f'intercepted in man-in-the-middle attacks.'
+                            ),
+                            'recommendation': (
+                                'Use a certificate from a trusted Certificate Authority. '
+                                "Let's Encrypt provides free certificates."
+                            ),
+                            'evidence': f'Issuer: {issuer_org or subject_cn}, Subject: {subject_cn}',
+                        })
+
+                    cipher = ssock.cipher()
+                    if cipher:
+                        cipher_name = cipher[0]
+                        weak_ciphers = [
+                            'RC4', 'DES', '3DES', 'NULL', 'EXPORT',
+                            'CBC3', 'RC2', 'IDEA',
+                        ]
+                        if any(weak in cipher_name.upper() for weak in weak_ciphers):
+                            self.findings.append({
+                                'title': f'Weak Cipher Suite: {cipher_name}',
+                                'severity': 'HIGH',
+                                'category': 'ssl',
+                                'description': (
+                                    f'The server uses a weak cipher suite: {cipher_name}. '
+                                    f'Weak ciphers can be broken by attackers, compromising '
+                                    f'the encryption of the connection.'
+                                ),
+                                'recommendation': (
+                                    'Disable weak cipher suites. Configure the server to '
+                                    'use only AEAD cipher suites (AES-GCM, ChaCha20-Poly1305).'
+                                ),
+                                'evidence': f'Cipher: {cipher_name}',
+                            })
+
+                    if not san_list and subject_cn:
+                        self.findings.append({
+                            'title': 'SSL Certificate Missing Subject Alternative Names',
+                            'severity': 'LOW',
+                            'category': 'ssl',
+                            'description': (
+                                'The SSL certificate does not include Subject Alternative '
+                                'Names (SAN). Modern browsers require SANs and may reject '
+                                'certificates that only use the Common Name field.'
+                            ),
+                            'recommendation': (
+                                'Re-issue the certificate with Subject Alternative Names '
+                                'for all domains it should cover.'
+                            ),
+                            'evidence': f'CN: {subject_cn}, SANs: none',
                         })
 
         except Exception as e:

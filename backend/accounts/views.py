@@ -330,9 +330,56 @@ def create_checkout_session(request):
         )
         return Response({'url': session.url})
     except Exception as e:
-        logger.error(f"Error creating checkout session: {e}")
         return Response({'detail': str(e)}, status=500)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_portal_session(request):
+    """Create a Stripe Customer Portal session."""
+    org = request.user.organization
+    if not org or not org.stripe_customer_id:
+        return Response({'detail': 'No active billing customer found.'}, status=400)
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        kwargs = {
+            'customer': org.stripe_customer_id,
+            'return_url': request.build_absolute_uri('/') + 'settings',
+        }
+        if hasattr(settings, 'STRIPE_PORTAL_CONFIG_ID') and settings.STRIPE_PORTAL_CONFIG_ID:
+            kwargs['configuration'] = settings.STRIPE_PORTAL_CONFIG_ID
+            
+        session = stripe.billing_portal.Session.create(**kwargs)
+        return Response({'url': session.url})
+    except Exception as e:
+        return Response({'detail': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_subscription(request):
+    """Cancel the current Stripe subscription at period end."""
+    org = request.user.organization
+    if not org:
+        return Response({'detail': 'No organization.'}, status=400)
+    
+    if not org.stripe_subscription_id:
+        # If they don't have a Stripe subscription, just downgrade locally
+        org.set_plan('free')
+        return Response({'detail': 'Plan downgraded locally.'})
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        # Cancel at period end
+        stripe.Subscription.modify(
+            org.stripe_subscription_id,
+            cancel_at_period_end=True
+        )
+        # Optional: We keep the plan as ultimate/pro until webhook 'customer.subscription.deleted' 
+        # comes through at period end. We can set a local flag if we want, but for now we just 
+        # let Stripe handle it. We can return a success message indicating it will cancel later.
+        return Response({'detail': 'Suscripción cancelada al final del periodo.'})
+    except Exception as e:
+        return Response({'detail': str(e)}, status=500)
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
@@ -395,3 +442,28 @@ def stripe_webhook(request):
         traceback.print_exc()
 
     return HttpResponse(status=200)
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def llm_config_view(request):
+    """Get or update organization LLM config."""
+    user = request.user
+    if not user.organization:
+        return Response({'detail': 'No organization.'}, status=400)
+    if user.role != 'admin':
+        return Response({'detail': 'Requires admin role.'}, status=403)
+
+    from .models import OrganizationLLMConfig
+    from .serializers import OrganizationLLMConfigSerializer
+
+    config, _ = OrganizationLLMConfig.objects.get_or_create(organization=user.organization)
+
+    if request.method == 'GET':
+        return Response(OrganizationLLMConfigSerializer(config).data)
+
+    elif request.method == 'PUT':
+        serializer = OrganizationLLMConfigSerializer(config, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(OrganizationLLMConfigSerializer(config).data)
+        return Response(serializer.errors, status=400)

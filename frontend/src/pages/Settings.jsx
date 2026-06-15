@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
     Settings as SettingsIcon, Bell, Mail, Save, Loader2, CheckCircle2,
-    Users, Link2, Copy, Trash2, UserPlus, Crown, Shield, Send, Calendar,
+    Users, Link2, Copy, Trash2, UserPlus, Crown, Shield, Send, Calendar, Cpu
 } from 'lucide-react'
 
 export default function Settings() {
@@ -27,6 +28,9 @@ export default function Settings() {
     const [copied,        setCopied]        = useState(null)
     const [teamError,     setTeamError]     = useState(null)
 
+    const [llmConfig,     setLlmConfig]     = useState({ provider: 'default', api_key: '', model_name: '' })
+    const [savingLlm,     setSavingLlm]     = useState(false)
+
     useEffect(() => {
         const controller = new AbortController()
         loadAll(controller.signal)
@@ -36,18 +40,20 @@ export default function Settings() {
     async function loadAll(signal) {
         const cfg = { signal }
         try {
-            const [configRes, logsRes, membersRes, invitesRes, orgRes] = await Promise.all([
+            const [configRes, logsRes, membersRes, invitesRes, orgRes, llmRes] = await Promise.all([
                 api.get('/notifications/config/', cfg).catch(() => ({ data: { frequency: 'weekly', enabled: true } })),
                 api.get('/notifications/logs/', cfg).catch(() => ({ data: [] })),
                 api.get('/auth/team/', cfg).catch(() => ({ data: [] })),
                 api.get('/auth/invitations/', cfg).catch(() => ({ data: [] })),
                 api.get('/auth/organization/', cfg).catch(() => ({ data: null })),
+                api.get('/auth/organization/llm-config/', cfg).catch(() => ({ data: { provider: 'default', api_key: '', model_name: '' } })),
             ])
             setConfig(configRes.data)
             setLogs(logsRes.data)
             setMembers(membersRes.data)
             setInvitations(invitesRes.data)
             setOrg(orgRes.data)
+            setLlmConfig({ ...llmRes.data, api_key: '' }) // Clear key for security, handle has_api_key visually if needed
         } catch (err) {
             if (err.code === 'ERR_CANCELED') return
             console.error('Failed to load settings:', err)
@@ -69,6 +75,24 @@ export default function Settings() {
             toast.error('Error al guardar la configuración.')
         } finally {
             setSaving(false)
+        }
+    }
+
+    async function handleSaveLlm(e) {
+        e.preventDefault()
+        setSavingLlm(true)
+        try {
+            const dataToSave = { ...llmConfig }
+            if (!dataToSave.api_key) {
+                delete dataToSave.api_key
+            }
+            const res = await api.put('/auth/organization/llm-config/', dataToSave)
+            setLlmConfig({ ...res.data, api_key: '' })
+            toast.success('Configuración de IA guardada.')
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Error al guardar configuración IA.')
+        } finally {
+            setSavingLlm(false)
         }
     }
 
@@ -310,6 +334,92 @@ export default function Settings() {
                             <Button type="submit" disabled={saving}>
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 Guardar
+                            </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+
+            {/* ── AI Config ── */}
+            <Card>
+                <CardHeader className="pb-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Cpu className="w-4 h-4 text-purple-500" /> Inteligencia Artificial
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSaveLlm} className="space-y-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Configura el proveedor de inteligencia artificial que generará los reportes automáticos.
+                        </p>
+                        <div className="space-y-2">
+                            <Label>Proveedor</Label>
+                            <Select
+                                value={llmConfig.provider || 'default'}
+                                onValueChange={(val) => setLlmConfig({ ...llmConfig, provider: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="default">Por defecto (Google Gemini)</SelectItem>
+                                    <SelectItem value="opencode_go">OpenCode Go</SelectItem>
+                                    <SelectItem value="openai">OpenAI</SelectItem>
+                                    <SelectItem value="anthropic">Anthropic</SelectItem>
+                                    <SelectItem value="gemini">Google Gemini (Clave Propia)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {llmConfig.provider !== 'default' && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Nombre del Modelo</Label>
+                                    {llmConfig.provider === 'opencode_go' ? (
+                                        <Select
+                                            value={llmConfig.model_name}
+                                            onValueChange={(val) => setLlmConfig({ ...llmConfig, model_name: val })}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="Selecciona un modelo" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="opencode-go/glm-5.1">GLM-5.1</SelectItem>
+                                                <SelectItem value="opencode-go/glm-5">GLM-5</SelectItem>
+                                                <SelectItem value="opencode-go/kimi-k2.6">Kimi K2.6</SelectItem>
+                                                <SelectItem value="opencode-go/kimi-k2.5">Kimi K2.5</SelectItem>
+                                                <SelectItem value="opencode-go/deepseek-v4-pro">DeepSeek V4 Pro</SelectItem>
+                                                <SelectItem value="opencode-go/deepseek-v4-flash">DeepSeek V4 Flash</SelectItem>
+                                                <SelectItem value="opencode-go/mimo-v2.5">MiMo V2.5</SelectItem>
+                                                <SelectItem value="opencode-go/mimo-v2.5-pro">MiMo V2.5 Pro</SelectItem>
+                                                <SelectItem value="opencode-go/minimax-m3">MiniMax M3</SelectItem>
+                                                <SelectItem value="opencode-go/minimax-m2.7">MiniMax M2.7</SelectItem>
+                                                <SelectItem value="opencode-go/minimax-m2.5">MiniMax M2.5</SelectItem>
+                                                <SelectItem value="opencode-go/qwen3.7-max">Qwen3.7 Max</SelectItem>
+                                                <SelectItem value="opencode-go/qwen3.6-plus">Qwen3.6 Plus</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input 
+                                            placeholder="Ej. gpt-4o, claude-3-5-sonnet-20240620" 
+                                            value={llmConfig.model_name || ''} 
+                                            onChange={e => setLlmConfig({...llmConfig, model_name: e.target.value})}
+                                        />
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>API Key</Label>
+                                    <Input 
+                                        type="password" 
+                                        placeholder={llmConfig.has_api_key ? '•••••••••••••••• (Guardada)' : 'Ingresa tu API Key'} 
+                                        value={llmConfig.api_key || ''}
+                                        onChange={e => setLlmConfig({...llmConfig, api_key: e.target.value})}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">La API Key se guarda cifrada y solo se usa para generar los reportes de tu organización.</p>
+                                </div>
+                            </>
+                        )}
+                        <div className="flex justify-end pt-2">
+                            <Button type="submit" disabled={savingLlm}>
+                                {savingLlm ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                Guardar IA
                             </Button>
                         </div>
                     </form>

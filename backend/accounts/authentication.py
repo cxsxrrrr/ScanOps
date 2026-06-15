@@ -6,6 +6,7 @@ Validates JWT tokens issued by Clerk and maps them to internal User objects.
 import logging
 
 import jwt
+import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import authentication, exceptions
@@ -60,6 +61,29 @@ def _decode_clerk_token(token):
         raise exceptions.AuthenticationFailed('Invalid authentication token.')
 
 
+def _fetch_email_from_clerk_api(clerk_user_id):
+    """Fetch the primary email for a Clerk user via the Backend API."""
+    if not settings.CLERK_SECRET_KEY:
+        return None
+    try:
+        response = requests.get(
+            f'https://api.clerk.com/v1/users/{clerk_user_id}',
+            headers={'Authorization': f'Bearer {settings.CLERK_SECRET_KEY}'},
+            timeout=5,
+        )
+        response.raise_for_status()
+        data = response.json()
+        email_addresses = data.get('email_addresses', [])
+        for e in email_addresses:
+            if e.get('id') == data.get('primary_email_address_id'):
+                return e.get('email_address')
+        if email_addresses:
+            return email_addresses[0].get('email_address')
+    except Exception as e:
+        logger.warning(f"Failed to fetch email from Clerk API for {clerk_user_id}: {e}")
+    return None
+
+
 class ClerkJWTAuthentication(authentication.BaseAuthentication):
     """
     DRF Authentication backend for Clerk.
@@ -98,6 +122,12 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
         first_name = payload.get('first_name', '')
         last_name = payload.get('last_name', '')
 
+        # If JWT doesn't carry a real email, try Clerk Backend API
+        if not email or email == f'{clerk_user_id}@clerk.user':
+            api_email = _fetch_email_from_clerk_api(clerk_user_id)
+            if api_email:
+                email = api_email
+
         user = None
 
         # 1. Try clerk_user_id lookup
@@ -107,15 +137,10 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
             pass
 
         # 2. If real email exists, always prefer the user with that email
-        logger.warning(f"Auth: clerk_id={clerk_user_id} email_from_jwt={email}")
         if email and email != f'{clerk_user_id}@clerk.user':
-            logger.warning(f"Auth: real email detected, searching for {email}")
             try:
                 email_user = User.objects.select_related('organization').get(email=email)
-                logger.warning(f"Auth: found email_user id={email_user.pk} role={email_user.role}")
                 if user and user.pk != email_user.pk:
-                    logger.warning(f"Auth: migrating clerk_id from user {user.pk} to {email_user.pk}")
-                    # Current clerk_id mapped to a different user — migrate it
                     user.clerk_user_id = None
                     user.save(update_fields=['clerk_user_id'])
                     logger.info(f"Unlinked Clerk ID {clerk_user_id} from {user.email}")
@@ -124,7 +149,6 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
                 user = email_user
                 logger.info(f"Linked Clerk ID {clerk_user_id} to existing user {email}")
             except User.DoesNotExist:
-                logger.warning(f"Auth: no user found with email {email}")
                 if not user:
                     from django.db import IntegrityError
                     try:
@@ -139,7 +163,6 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
                     except IntegrityError:
                         user = User.objects.get(clerk_user_id=clerk_user_id)
         elif not user:
-            # 3. No real email — create user with auto-generated email
             from django.db import IntegrityError
             try:
                 user = User.objects.create(
@@ -152,6 +175,14 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
                 logger.info(f"Auto-created user for Clerk ID: {clerk_user_id}")
             except IntegrityError:
                 user = User.objects.get(clerk_user_id=clerk_user_id)
+
+        # If user still has a fake email, try to update it from Clerk API
+        if user.email.endswith('@clerk.user'):
+            api_email = _fetch_email_from_clerk_api(clerk_user_id)
+            if api_email:
+                user.email = api_email
+                user.save(update_fields=['email'])
+                logger.info(f"Updated email for user {clerk_user_id}: {api_email}")
 
         return (user, payload)
 
