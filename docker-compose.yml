@@ -57,7 +57,6 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - CELERY_TASK_ALWAYS_EAGER=False
       - CELERY_TASK_EAGER_PROPAGATES=False
-      - FRONTEND_URL=http://localhost
     ports:
       - "8000:8000"
     depends_on:
