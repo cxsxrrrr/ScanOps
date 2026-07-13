@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'reports',
     'notifications',
     'administration',
+    'audit_log',
 ]
 
 MIDDLEWARE = [
@@ -45,6 +46,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'audit_log.middleware.APIRequestLogMiddleware',
 ]
 
 ROOT_URLCONF = 'auditoria.urls'
@@ -165,7 +167,7 @@ GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
 # --- Resend ---
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
-RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='onboarding@resend.dev')
+RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='Vigia <onboarding@resend.dev>')
 
 # --- Stripe ---
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')

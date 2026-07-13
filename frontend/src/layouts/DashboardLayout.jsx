@@ -228,7 +228,7 @@ export default function DashboardLayout() {
                     )}
 
                     {/* ── Logo ── */}
-                    <div className="relative flex items-center justify-between px-4 h-16"
+                    <div className={`relative flex items-center ${collapsed ? 'flex-col justify-center gap-2 py-3' : 'justify-between px-4 h-16'}`}
                         style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid hsl(220 13% 88%)' }}
                     >
                         <AnimatePresence mode="wait">
@@ -258,7 +258,7 @@ export default function DashboardLayout() {
                             )}
                         </AnimatePresence>
                         {collapsed && (
-                            <div className="mx-auto relative">
+                            <div className="relative">
                                 <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                                     style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', boxShadow: '0 4px 16px rgba(37,99,235,0.5)' }}
                                 >
@@ -267,7 +267,7 @@ export default function DashboardLayout() {
                                 <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 animate-pulse" style={{ borderColor: isDark ? '#07101f' : '#f8fafc' }} />
                             </div>
                         )}
-                        <div className="flex items-center gap-1">
+                        <div className={`flex items-center ${collapsed ? '' : 'gap-1'}`}>
                             <button
                                 onClick={() => { setCollapsed(!collapsed); setMobileOpen(false) }}
                                 className="hidden lg:flex p-1.5 rounded-lg transition-colors flex-shrink-0"

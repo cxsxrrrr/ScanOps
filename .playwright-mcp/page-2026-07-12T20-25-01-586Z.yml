@@ -1,0 +1,116 @@
+- generic [ref=f3e2]:
+  - generic [ref=f3e3]:
+    - complementary [ref=f3e4]:
+      - generic [ref=f3e5]:
+        - generic [ref=f3e6]: Vigia
+        - button [ref=f3e15] [cursor=pointer]
+      - generic [ref=f3e19]: Navegación
+      - navigation [ref=f3e20]:
+        - link "Dashboard" [ref=f3e22] [cursor=pointer]:
+          - /url: /
+        - link "URLs" [ref=f3e32] [cursor=pointer]:
+          - /url: /urls
+        - link "Escaneos" [ref=f3e40] [cursor=pointer]:
+          - /url: /scans
+        - link "Planes" [ref=f3e51] [cursor=pointer]:
+          - /url: /plans
+        - link "Perfil" [ref=f3e58] [cursor=pointer]:
+          - /url: /profile
+        - link "Configuración" [ref=f3e66] [cursor=pointer]:
+          - /url: /settings
+        - link "Admin" [ref=f3e74] [cursor=pointer]:
+          - /url: /admin
+      - link "Términos y Condiciones" [ref=f3e82] [cursor=pointer]:
+        - /url: /terms
+      - generic [ref=f3e89]:
+        - button "Open user menu" [ref=f3e91] [cursor=pointer]:
+          - img "Samuel Rodriguez's logo" [ref=f3e94]
+        - generic [ref=f3e96]:
+          - generic [ref=f3e97]:
+            - paragraph [ref=f3e98]: Samuel
+            - generic [ref=f3e99]: ADMIN
+          - generic [ref=f3e100]: ULTIMATE
+    - main [ref=f3e104]:
+      - generic [ref=f3e105]:
+        - generic [ref=f3e106]:
+          - button "Abrir menú" [ref=f3e107] [cursor=pointer]
+          - heading "Historial de Escaneos" [level=2] [ref=f3e109]
+        - generic [ref=f3e110]:
+          - button "Modo oscuro" [ref=f3e111] [cursor=pointer]
+          - generic [ref=f3e115]:
+            - text: Sistema activo
+            - generic [ref=f3e117]: ·
+            - text: v2.0
+      - generic [ref=f3e120]:
+        - generic [ref=f3e121]:
+          - generic [ref=f3e122]:
+            - heading "Historial de Escaneos" [level=1] [ref=f3e123]
+            - paragraph [ref=f3e131]: Revisa los resultados de tus auditorías de seguridad.
+          - generic [ref=f3e132]:
+            - button "Reporte por fecha" [ref=f3e133] [cursor=pointer]
+            - generic [ref=f3e134]:
+              - button "Todos" [ref=f3e137] [cursor=pointer]
+              - button "Completado" [ref=f3e138] [cursor=pointer]
+              - button "En progreso" [ref=f3e139] [cursor=pointer]
+              - button "Pendiente" [ref=f3e140] [cursor=pointer]
+              - button "Error" [ref=f3e141] [cursor=pointer]
+        - generic [ref=f3e144]:
+          - link "https://www.agrocappture.com 2 jun. 2026, 11:11 a. m. — 2 jun. 2026, 11:14 a. m. 10 3 Completado" [ref=f3e146] [cursor=pointer]:
+            - /url: /scans/27/report
+            - generic [ref=f3e151]:
+              - paragraph [ref=f3e152]: https://www.agrocappture.com
+              - paragraph [ref=f3e153]: 2 jun. 2026, 11:11 a. m. — 2 jun. 2026, 11:14 a. m.
+            - generic [ref=f3e154]:
+              - generic [ref=f3e155]: "10"
+              - generic [ref=f3e156]: "3"
+              - generic [ref=f3e157]: Completado
+          - link "https://database-pg1.c5olw5iuyqi7.us-east-1.rds.amazonaws.com 25 may. 2026, 06:56 p. m. — 25 may. 2026, 06:56 p. m. 1 Completado" [ref=f3e162] [cursor=pointer]:
+            - /url: /scans/26/report
+            - generic [ref=f3e167]:
+              - paragraph [ref=f3e168]: https://database-pg1.c5olw5iuyqi7.us-east-1.rds.amazonaws.com
+              - paragraph [ref=f3e169]: 25 may. 2026, 06:56 p. m. — 25 may. 2026, 06:56 p. m.
+            - generic [ref=f3e170]:
+              - generic [ref=f3e171]: "1"
+              - generic [ref=f3e174]: Completado
+          - link "http://52.200.46.51 25 may. 2026, 06:52 p. m. — 25 may. 2026, 06:52 p. m. 1 3 2 Completado" [ref=f3e179] [cursor=pointer]:
+            - /url: /scans/25/report
+            - generic [ref=f3e184]:
+              - paragraph [ref=f3e185]: http://52.200.46.51
+              - paragraph [ref=f3e186]: 25 may. 2026, 06:52 p. m. — 25 may. 2026, 06:52 p. m.
+            - generic [ref=f3e187]:
+              - generic [ref=f3e188]: "1"
+              - generic [ref=f3e191]: "3"
+              - generic [ref=f3e192]: "2"
+              - generic [ref=f3e193]: Completado
+          - link "https://hardtechsolutions.fbennassar.dev/ 25 may. 2026, 06:15 p. m. — 25 may. 2026, 06:15 p. m. 1 1 10 6 Completado" [ref=f3e198] [cursor=pointer]:
+            - /url: /scans/24/report
+            - generic [ref=f3e203]:
+              - paragraph [ref=f3e204]: https://hardtechsolutions.fbennassar.dev/
+              - paragraph [ref=f3e205]: 25 may. 2026, 06:15 p. m. — 25 may. 2026, 06:15 p. m.
+            - generic [ref=f3e206]:
+              - generic [ref=f3e207]: "1"
+              - generic [ref=f3e210]: "1"
+              - generic [ref=f3e213]: "10"
+              - generic [ref=f3e214]: "6"
+              - generic [ref=f3e215]: Completado
+          - link "https://google.com 25 may. 2026, 06:13 p. m. — 25 may. 2026, 06:14 p. m. 2 18 22 Completado" [ref=f3e220] [cursor=pointer]:
+            - /url: /scans/23/report
+            - generic [ref=f3e225]:
+              - paragraph [ref=f3e226]: https://google.com
+              - paragraph [ref=f3e227]: 25 may. 2026, 06:13 p. m. — 25 may. 2026, 06:14 p. m.
+            - generic [ref=f3e228]:
+              - generic [ref=f3e229]: "2"
+              - generic [ref=f3e232]: "18"
+              - generic [ref=f3e233]: "22"
+              - generic [ref=f3e234]: Completado
+          - link "https://www.agrocappture.com 25 may. 2026, 04:04 p. m. — 25 may. 2026, 04:07 p. m. 1 14 14 Completado" [ref=f3e239] [cursor=pointer]:
+            - /url: /scans/22/report
+            - generic [ref=f3e244]:
+              - paragraph [ref=f3e245]: https://www.agrocappture.com
+              - paragraph [ref=f3e246]: 25 may. 2026, 04:04 p. m. — 25 may. 2026, 04:07 p. m.
+            - generic [ref=f3e247]:
+              - generic [ref=f3e248]: "1"
+              - generic [ref=f3e251]: "14"
+              - generic [ref=f3e252]: "14"
+              - generic [ref=f3e253]: Completado
+  - region "Notifications alt+T"

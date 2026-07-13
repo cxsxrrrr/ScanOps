@@ -1,0 +1,20 @@
+[    1868ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=ff95c854:20102
+[    2227ms] [WARNING] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview @ https://ample-duck-89.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js:18
+[  296236ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/auth/organization/:0
+[  296237ms] [ERROR] Failed to load org data: AxiosError: Request failed with status code 500
+    at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:1281:12)
+    at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:1638:7)
+    at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:2255:41)
+    at async loadOrgData (http://localhost:5173/src/pages/Plans.jsx:105:19) @ http://localhost:5173/src/pages/Plans.jsx:108
+[  297116ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/scans/list/:0
+[  297117ms] [ERROR] Failed to load scans: AxiosError: Request failed with status code 500
+    at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:1281:12)
+    at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:1638:7)
+    at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:2255:41)
+    at async loadScans (http://localhost:5173/src/pages/ScanHistory.jsx?t=1783887788195:88:19) @ http://localhost:5173/src/pages/ScanHistory.jsx?t=1783887788195:91
+[  297298ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/scans/list/:0
+[  297298ms] [ERROR] Failed to load scans: AxiosError: Request failed with status code 500
+    at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:1281:12)
+    at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:1638:7)
+    at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=ff95c854:2255:41)
+    at async loadScans (http://localhost:5173/src/pages/ScanHistory.jsx?t=1783887788195:88:19) @ http://localhost:5173/src/pages/ScanHistory.jsx?t=1783887788195:91

@@ -1,0 +1,2 @@
+[     127ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=ff95c854:20102
+[     475ms] [WARNING] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview @ https://ample-duck-89.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js:18

@@ -1,4 +1,5 @@
 """Admin panel views for system administration."""
+from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import permissions, status
@@ -9,11 +10,14 @@ from accounts.models import User, Organization, PLAN_LIMITS
 from accounts.serializers import OrganizationSerializer
 from scanner.models import Scan, Finding
 from notifications.models import EmailLog
+from audit_log.models import APIRequestLog
 
 
 class IsAdminUser(permissions.BasePermission):
     """Only allow admin users."""
     def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
         import logging
         logger = logging.getLogger(__name__)
         logger.warning(
@@ -22,7 +26,7 @@ class IsAdminUser(permissions.BasePermission):
             f"clerk_id={request.user.clerk_user_id} "
             f"is_auth={request.user.is_authenticated}"
         )
-        return request.user.is_authenticated and request.user.role == 'admin'
+        return request.user.role == 'admin'
 
 
 @api_view(['GET'])
@@ -362,4 +366,51 @@ def analytics_organization_detail(request, pk):
         'users': list(users_data),
         'urls': urls_data,
         'recent_scans': scan_history[-50:], # limit global chart to 50
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def audit_log_list(request):
+    """List API request audit logs (admin only) — evidence trail, paginated."""
+    logs = APIRequestLog.objects.all()
+
+    ip = request.query_params.get('ip')
+    if ip:
+        logs = logs.filter(ip_address__icontains=ip)
+
+    method = request.query_params.get('method')
+    if method:
+        logs = logs.filter(method=method.upper())
+
+    search = request.query_params.get('search')
+    if search:
+        logs = logs.filter(
+            Q(path__icontains=search)
+            | Q(user_email__icontains=search)
+            | Q(organization_name__icontains=search)
+        )
+
+    try:
+        page = max(int(request.query_params.get('page', 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = min(max(int(request.query_params.get('page_size', 50)), 1), 200)
+    except (TypeError, ValueError):
+        page_size = 50
+
+    total = logs.count()
+    start = (page - 1) * page_size
+    results = logs[start:start + page_size].values(
+        'id', 'created_at', 'method', 'path', 'query_string', 'status_code',
+        'ip_address', 'user_id', 'user_email', 'organization_id',
+        'organization_name', 'user_agent', 'response_time_ms',
+    )
+
+    return Response({
+        'count': total,
+        'page': page,
+        'page_size': page_size,
+        'results': list(results),
     })

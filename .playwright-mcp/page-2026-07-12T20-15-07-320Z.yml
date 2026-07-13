@@ -1,0 +1,36 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - heading "Vigia" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - heading "Bienvenido de vuelta" [level=2] [ref=e13]
+        - paragraph [ref=e14]: Inicia sesion para acceder a tu panel de seguridad
+        - generic [ref=e20]:
+          - link "Terminos y Condiciones" [ref=e21] [cursor=pointer]:
+            - /url: /terms
+          - paragraph [ref=e25]: Al iniciar sesion aceptas nuestros terminos de uso, politica de privacidad y el uso responsable de la plataforma de auditoria de seguridad.
+        - generic [ref=e110]:
+          - generic [ref=e113]:
+            - button "Sign in with Google Continue with Google" [ref=e117] [cursor=pointer]:
+              - generic [ref=e118]:
+                - img "Sign in with Google" [ref=e120]
+                - generic [ref=e121]: Continue with Google
+            - link [ref=e123] [cursor=pointer]:
+              - /url: http://localhost:5173/CLERK-ROUTER/HASH/factor-one
+              - paragraph [ref=e124]: Back
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - generic [ref=e127]: Don’t have any of these?
+              - link "Get help" [ref=e128] [cursor=pointer]:
+                - /url: http://localhost:5173/CLERK-ROUTER/HASH/factor-one
+            - generic [ref=e130]:
+              - generic [ref=e132]:
+                - paragraph [ref=e133]: Secured by
+                - link "Clerk logo" [ref=e134] [cursor=pointer]:
+                  - /url: https://go.clerk.com/components
+              - paragraph [ref=e140]: Development mode
+      - paragraph [ref=e26]:
+        - text: ¿No tienes cuenta?
+        - link "Regístrate" [ref=e27] [cursor=pointer]:
+          - /url: /register
+  - region "Notifications alt+T"

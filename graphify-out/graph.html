@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>graphify - graphify-out\graph.html</title>
+<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"
+        integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
+        crossorigin="anonymous"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f1a; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  #graph { flex: 1; }
+  #sidebar { width: 280px; background: #1a1a2e; border-left: 1px solid #2a2a4e; display: flex; flex-direction: column; overflow: hidden; }
+  #search-wrap { padding: 12px; border-bottom: 1px solid #2a2a4e; }
+  #search { width: 100%; background: #0f0f1a; border: 1px solid #3a3a5e; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
+  #search:focus { border-color: #4E79A7; }
+  #search-results { max-height: 140px; overflow-y: auto; padding: 4px 12px; border-bottom: 1px solid #2a2a4e; display: none; }
+  .search-item { padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-item:hover { background: #2a2a4e; }
+  #info-panel { padding: 14px; border-bottom: 1px solid #2a2a4e; min-height: 140px; }
+  #info-panel h3 { font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #info-content { font-size: 13px; color: #ccc; line-height: 1.6; }
+  #info-content .field { margin-bottom: 5px; }
+  #info-content .field b { color: #e0e0e0; }
+  #info-content .empty { color: #555; font-style: italic; }
+  .neighbor-link { display: block; padding: 2px 6px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid #333; }
+  .neighbor-link:hover { background: #2a2a4e; }
+  #neighbors-list { max-height: 160px; overflow-y: auto; margin-top: 4px; }
+  #legend-wrap { flex: 1; overflow-y: auto; padding: 12px; }
+  #legend-wrap h3 { font-size: 13px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .legend-item:hover { background: #2a2a4e; padding-left: 4px; }
+  .legend-item.dimmed { opacity: 0.35; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend-count { color: #666; font-size: 11px; }
+  #stats { padding: 10px 14px; border-top: 1px solid #2a2a4e; font-size: 11px; color: #555; }
+  #legend-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px 0; }
+  #legend-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #aaa; user-select: none; }
+  #legend-controls label:hover { color: #e0e0e0; }
+  .legend-cb, #select-all-cb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1.5px solid #3a3a5e; border-radius: 3px; background: #0f0f1a; cursor: pointer; position: relative; flex-shrink: 0; }
+  .legend-cb:checked, #select-all-cb:checked { background: #4E79A7; border-color: #4E79A7; }
+  .legend-cb:checked::after, #select-all-cb:checked::after { content: ''; position: absolute; left: 3.5px; top: 1px; width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  #select-all-cb:indeterminate { background: #4E79A7; border-color: #4E79A7; }
+  #select-all-cb:indeterminate::after { content: ''; position: absolute; left: 2px; top: 5px; width: 8px; height: 2px; background: #fff; border: none; transform: none; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="sidebar">
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Search nodes..." autocomplete="off">
+    <div id="search-results"></div>
+  </div>
+  <div id="info-panel">
+    <h3>Node Info</h3>
+    <div id="info-content"><span class="empty">Click a node to inspect it</span></div>
+  </div>
+  <div id="legend-wrap">
+    <h3>Communities</h3>
+    <div id="legend-controls">
+      <label><input type="checkbox" id="select-all-cb" checked onchange="toggleAllCommunities(!this.checked)">Select All</label>
+    </div>
+    <div id="legend"></div>
+  </div>
+  <div id="stats">74 nodes &middot; 39 edges &middot; 45 communities</div>
+</div>
+<script>
+const RAW_NODES = [{"id": "components_errorboundary_errorboundary", "label": "ErrorBoundary", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "ErrorBoundary", "community": 16, "community_name": "ErrorBoundary", "source_file": "frontend/src/components/ErrorBoundary.jsx", "file_type": "code", "degree": 0}, {"id": "components_pagetransition_pagetransition", "label": "PageTransition", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "PageTransition", "community": 17, "community_name": "PageTransition", "source_file": "frontend/src/components/PageTransition.jsx", "file_type": "code", "degree": 0}, {"id": "components_termsmodal_termsmodal", "label": "TermsModal", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "TermsModal", "community": 18, "community_name": "TermsModal", "source_file": "frontend/src/components/TermsModal.jsx", "file_type": "code", "degree": 0}, {"id": "contexts_themecontext_themeprovider", "label": "ThemeProvider", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "ThemeProvider", "community": 19, "community_name": "ThemeProvider", "source_file": "frontend/src/contexts/ThemeContext.jsx", "file_type": "code", "degree": 0}, {"id": "contexts_themecontext_usetheme", "label": "useTheme", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "useTheme", "community": 20, "community_name": "useTheme", "source_file": "frontend/src/contexts/ThemeContext.jsx", "file_type": "code", "degree": 0}, {"id": "hooks_useapi_useapisetup", "label": "useApiSetup", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "useApiSetup", "community": 21, "community_name": "useApiSetup", "source_file": "frontend/src/hooks/useApi.js", "file_type": "code", "degree": 0}, {"id": "layouts_dashboardlayout_dashboardlayout", "label": "DashboardLayout", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "DashboardLayout", "community": 22, "community_name": "DashboardLayout", "source_file": "frontend/src/layouts/DashboardLayout.jsx", "file_type": "code", "degree": 0}, {"id": "lib_api_settokengetter", "label": "setTokenGetter", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "setTokenGetter", "community": 23, "community_name": "setTokenGetter", "source_file": "frontend/src/lib/api.js", "file_type": "code", "degree": 0}, {"id": "lib_api_signalauthready", "label": "signalAuthReady", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "signalAuthReady", "community": 24, "community_name": "signalAuthReady", "source_file": "frontend/src/lib/api.js", "file_type": "code", "degree": 0}, {"id": "lib_utils_cn", "label": "cn", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "cn", "community": 25, "community_name": "cn", "source_file": "frontend/src/lib/utils.js", "file_type": "code", "degree": 0}, {"id": "lib_utils_formatdate", "label": "formatDate", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "formatDate", "community": 26, "community_name": "formatDate", "source_file": "frontend/src/lib/utils.js", "file_type": "code", "degree": 0}, {"id": "lib_utils_getseveritycolor", "label": "getSeverityColor", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "getSeverityColor", "community": 27, "community_name": "getSeverityColor", "source_file": "frontend/src/lib/utils.js", "file_type": "code", "degree": 0}, {"id": "lib_utils_getseveritylabel", "label": "getSeverityLabel", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "getSeverityLabel", "community": 28, "community_name": "getSeverityLabel", "source_file": "frontend/src/lib/utils.js", "file_type": "code", "degree": 0}, {"id": "lib_utils_getstatuscolor", "label": "getStatusColor", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "getStatusColor", "community": 29, "community_name": "getStatusColor", "source_file": "frontend/src/lib/utils.js", "file_type": "code", "degree": 0}, {"id": "lib_utils_getstatuslabel", "label": "getStatusLabel", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "getStatusLabel", "community": 30, "community_name": "getStatusLabel", "source_file": "frontend/src/lib/utils.js", "file_type": "code", "degree": 0}, {"id": "pages_dashboard_dashboard", "label": "Dashboard", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Dashboard", "community": 31, "community_name": "Dashboard", "source_file": "frontend/src/pages/Dashboard.jsx", "file_type": "code", "degree": 0}, {"id": "pages_jointeam_jointeam", "label": "JoinTeam", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "JoinTeam", "community": 32, "community_name": "JoinTeam", "source_file": "frontend/src/pages/JoinTeam.jsx", "file_type": "code", "degree": 0}, {"id": "pages_login_login", "label": "Login", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Login", "community": 33, "community_name": "Login", "source_file": "frontend/src/pages/Login.jsx", "file_type": "code", "degree": 0}, {"id": "pages_paymentcancel_paymentcancel", "label": "PaymentCancel", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "PaymentCancel", "community": 34, "community_name": "PaymentCancel", "source_file": "frontend/src/pages/PaymentCancel.jsx", "file_type": "code", "degree": 0}, {"id": "pages_paymentsuccess_paymentsuccess", "label": "PaymentSuccess", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "PaymentSuccess", "community": 35, "community_name": "PaymentSuccess", "source_file": "frontend/src/pages/PaymentSuccess.jsx", "file_type": "code", "degree": 0}, {"id": "pages_plans_plans", "label": "Plans", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Plans", "community": 36, "community_name": "Plans", "source_file": "frontend/src/pages/Plans.jsx", "file_type": "code", "degree": 0}, {"id": "pages_profile_profile", "label": "Profile", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Profile", "community": 37, "community_name": "Profile", "source_file": "frontend/src/pages/Profile.jsx", "file_type": "code", "degree": 0}, {"id": "pages_register_register", "label": "Register", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Register", "community": 38, "community_name": "Register", "source_file": "frontend/src/pages/Register.jsx", "file_type": "code", "degree": 0}, {"id": "pages_report_report", "label": "Report", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Report", "community": 39, "community_name": "Report", "source_file": "frontend/src/pages/Report.jsx", "file_type": "code", "degree": 0}, {"id": "pages_scanhistory_scanhistory", "label": "ScanHistory", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "ScanHistory", "community": 40, "community_name": "ScanHistory", "source_file": "frontend/src/pages/ScanHistory.jsx", "file_type": "code", "degree": 0}, {"id": "pages_settings_settings", "label": "Settings", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Settings", "community": 41, "community_name": "Settings", "source_file": "frontend/src/pages/Settings.jsx", "file_type": "code", "degree": 0}, {"id": "pages_termsandconditions_termsandconditions", "label": "TermsAndConditions", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "TermsAndConditions", "community": 42, "community_name": "TermsAndConditions", "source_file": "frontend/src/pages/TermsAndConditions.jsx", "file_type": "code", "degree": 0}, {"id": "pages_urls_urls", "label": "URLs", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "URLs", "community": 43, "community_name": "URLs", "source_file": "frontend/src/pages/URLs.jsx", "file_type": "code", "degree": 0}, {"id": "admin_admindashboard_admindashboard", "label": "AdminDashboard", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "AdminDashboard", "community": 7, "community_name": "AdminDashboard", "source_file": "frontend/src/pages/admin/AdminDashboard.jsx", "file_type": "code", "degree": 0}, {"id": "admin_editorgmodal_editorgmodal", "label": "EditOrgModal", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "EditOrgModal", "community": 8, "community_name": "EditOrgModal", "source_file": "frontend/src/pages/admin/EditOrgModal.jsx", "file_type": "code", "degree": 0}, {"id": "admin_editusermodal_editusermodal", "label": "EditUserModal", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "EditUserModal", "community": 9, "community_name": "EditUserModal", "source_file": "frontend/src/pages/admin/EditUserModal.jsx", "file_type": "code", "degree": 0}, {"id": "admin_organalyticsmodal_organalyticsmodal", "label": "OrgAnalyticsModal", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "OrgAnalyticsModal", "community": 10, "community_name": "OrgAnalyticsModal", "source_file": "frontend/src/pages/admin/OrgAnalyticsModal.jsx", "file_type": "code", "degree": 0}, {"id": "vigia_readme_vigia", "label": "Vigia", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 31.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Vigia", "community": 0, "community_name": "Vigia", "source_file": "README.md", "file_type": "document", "degree": 7}, {"id": "vigia_readme_cybersecurity_web_scanning", "label": "Cybersecurity Web Scanning Web Application", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Cybersecurity Web Scanning Web Application", "community": 0, "community_name": "Vigia", "source_file": "README.md", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_django", "label": "Django 5.1.5", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Django 5.1.5", "community": 0, "community_name": "Vigia", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 3}, {"id": "backend_requirements_djangorestframework", "label": "Django REST Framework 3.15.2", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Django REST Framework 3.15.2", "community": 0, "community_name": "Vigia", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 2}, {"id": "backend_requirements_drfspectacular", "label": "drf-spectacular 0.27.2", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "drf-spectacular 0.27.2", "community": 0, "community_name": "Vigia", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_django_cors_headers", "label": "django-cors-headers 4.6.0", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "django-cors-headers 4.6.0", "community": 11, "community_name": "django-cors-headers 4.6.0", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 0}, {"id": "backend_requirements_psycopg2", "label": "psycopg2-binary 2.9.10", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "psycopg2-binary 2.9.10", "community": 0, "community_name": "Vigia", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_celery", "label": "Celery 5.4.0", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Celery 5.4.0", "community": 5, "community_name": "Celery 5.4.0", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_redis", "label": "Redis 5.2.1", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Redis 5.2.1", "community": 5, "community_name": "Celery 5.4.0", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_pyjwt", "label": "PyJWT 2.10.1", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "PyJWT 2.10.1", "community": 4, "community_name": "Clerk JWT Validation", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_cryptography", "label": "cryptography 44.0.0", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "cryptography 44.0.0", "community": 4, "community_name": "Clerk JWT Validation", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_clerk_jwt", "label": "Clerk JWT Validation", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Clerk JWT Validation", "community": 4, "community_name": "Clerk JWT Validation", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 2}, {"id": "backend_requirements_google_generativeai", "label": "google-generativeai 0.8.4", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "google-generativeai 0.8.4", "community": 0, "community_name": "Vigia", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_resend", "label": "Resend Email 2.0.0", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Resend Email 2.0.0", "community": 15, "community_name": "Resend Email 2.0.0", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 0}, {"id": "backend_requirements_weasyprint", "label": "WeasyPrint 63.1", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "WeasyPrint 63.1", "community": 6, "community_name": "ReportLab 4.2.2", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_reportlab", "label": "ReportLab 4.2.2", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "ReportLab 4.2.2", "community": 6, "community_name": "ReportLab 4.2.2", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_openpyxl", "label": "openpyxl 3.1.5", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "openpyxl 3.1.5", "community": 13, "community_name": "openpyxl 3.1.5", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 0}, {"id": "backend_requirements_stripe", "label": "Stripe Payments", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Stripe Payments", "community": 0, "community_name": "Vigia", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 1}, {"id": "backend_requirements_django_filter", "label": "django-filter 24.3", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "django-filter 24.3", "community": 12, "community_name": "django-filter 24.3", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 0}, {"id": "backend_requirements_python_decouple", "label": "python-decouple 3.8", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "python-decouple 3.8", "community": 14, "community_name": "python-decouple 3.8", "source_file": "backend/requirements.txt", "file_type": "concept", "degree": 0}, {"id": "skills_frontend_design_skill", "label": "Frontend Design Skill", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 10.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Frontend Design Skill", "community": 44, "community_name": "Frontend Design Skill", "source_file": "frontend/.claude/skills/frontend-design/SKILLS.md", "file_type": "document", "degree": 0}, {"id": "changes_20260525bugfixes_bugfixes_doc", "label": "Bug Fixes 2026-05-25", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 31.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Bug Fixes 2026-05-25", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "document", "degree": 7}, {"id": "changes_20260525bugfixes_bug001_rules_of_hooks", "label": "BUG-001 React Rules of Hooks Violation", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "BUG-001 React Rules of Hooks Violation", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "concept", "degree": 2}, {"id": "changes_20260525bugfixes_bug002_xss", "label": "BUG-002 XSS via dangerouslySetInnerHTML", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "BUG-002 XSS via dangerouslySetInnerHTML", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "concept", "degree": 3}, {"id": "changes_20260525bugfixes_bug003_alert_blocking", "label": "BUG-003 Blocking alert() Replaced by Inline UI", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "BUG-003 Blocking alert() Replaced by Inline UI", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "concept", "degree": 2}, {"id": "changes_20260525bugfixes_bug004_dark_mode_css", "label": "BUG-004 Dark Mode CSS Selector Fix", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 19.0, "font": {"size": 12, "color": "#ffffff"}, "title": "BUG-004 Dark Mode CSS Selector Fix", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "concept", "degree": 3}, {"id": "changes_20260525bugfixes_bug005_abortcontroller", "label": "BUG-005 Missing HTTP Request Cancellation (AbortController)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "BUG-005 Missing HTTP Request Cancellation (AbortController)", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "concept", "degree": 2}, {"id": "changes_20260525bugfixes_src_app_jsx", "label": "src/App.jsx", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "src/App.jsx", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "code", "degree": 1}, {"id": "changes_20260525bugfixes_src_report_jsx", "label": "src/pages/Report.jsx", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "src/pages/Report.jsx", "community": 1, "community_name": "Bug Fixes 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "code", "degree": 2}, {"id": "changes_20260525bugfixes_src_index_css", "label": "src/index.css", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "src/index.css", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/docs/changes/2026-05-25-bugfixes.md", "file_type": "code", "degree": 1}, {"id": "changes_20260525redesign_redesign_doc", "label": "UI/UX Redesign 2026-05-25", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 40.0, "font": {"size": 12, "color": "#ffffff"}, "title": "UI/UX Redesign 2026-05-25", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "document", "degree": 10}, {"id": "changes_20260525redesign_framer_motion", "label": "framer-motion v11", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "framer-motion v11", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "concept", "degree": 2}, {"id": "changes_20260525redesign_sonner", "label": "Sonner Toast System v1", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Sonner Toast System v1", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "concept", "degree": 1}, {"id": "changes_20260525redesign_radix_ui", "label": "Radix UI / shadcn-ui", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Radix UI / shadcn-ui", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "concept", "degree": 2}, {"id": "changes_20260525redesign_error_boundary", "label": "ErrorBoundary Component", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "ErrorBoundary Component", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "code", "degree": 1}, {"id": "changes_20260525redesign_page_transition", "label": "PageTransition Component", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "PageTransition Component", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "code", "degree": 2}, {"id": "changes_20260525redesign_shadcn_ui_components", "label": "shadcn/ui Components (16 components)", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "shadcn/ui Components (16 components)", "community": 3, "community_name": "UI/UX Redesign 2026-05-25", "source_file": "frontend/docs/changes/2026-05-25-redesign.md", "file_type": "code", "degree": 2}, {"id": "frontend_index_vigia_frontend", "label": "Vigia Frontend (index.html)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 25.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Vigia Frontend (index.html)", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/index.html", "file_type": "code", "degree": 5}, {"id": "frontend_index_inter_font", "label": "Inter Font (Google Fonts)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Inter Font (Google Fonts)", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/index.html", "file_type": "concept", "degree": 1}, {"id": "frontend_index_dark_mode_theme", "label": "Dark Mode Theme Toggle (localStorage)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.0, "font": {"size": 12, "color": "#ffffff"}, "title": "Dark Mode Theme Toggle (localStorage)", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/index.html", "file_type": "concept", "degree": 2}, {"id": "frontend_index_vite_react", "label": "Vite + React (main.jsx entry)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Vite + React (main.jsx entry)", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/index.html", "file_type": "concept", "degree": 1}, {"id": "frontend_index_pymes_target", "label": "Target Audience: PYMES (SMBs)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 13.0, "font": {"size": 0, "color": "#ffffff"}, "title": "Target Audience: PYMES (SMBs)", "community": 2, "community_name": "Vigia Frontend (index.html)", "source_file": "frontend/index.html", "file_type": "concept", "degree": 1}];
+const RAW_EDGES = [{"from": "vigia_readme_vigia", "to": "backend_requirements_django", "label": "implements", "title": "implements [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "vigia_readme_vigia", "to": "backend_requirements_google_generativeai", "label": "used_by", "title": "used_by [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "vigia_readme_vigia", "to": "backend_requirements_stripe", "label": "used_by", "title": "used_by [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "vigia_readme_vigia", "to": "changes_20260525bugfixes_bugfixes_doc", "label": "documents", "title": "documents [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "vigia_readme_vigia", "to": "changes_20260525redesign_redesign_doc", "label": "documents", "title": "documents [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "vigia_readme_vigia", "to": "frontend_index_vigia_frontend", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "vigia_readme_vigia", "to": "vigia_readme_cybersecurity_web_scanning", "label": "describes", "title": "describes [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "backend_requirements_django", "to": "backend_requirements_djangorestframework", "label": "extends", "title": "extends [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "backend_requirements_django", "to": "backend_requirements_psycopg2", "label": "used_by", "title": "used_by [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "backend_requirements_djangorestframework", "to": "backend_requirements_drfspectacular", "label": "extends", "title": "extends [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "backend_requirements_celery", "to": "backend_requirements_redis", "label": "depends_on", "title": "depends_on [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "backend_requirements_pyjwt", "to": "backend_requirements_clerk_jwt", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "backend_requirements_cryptography", "to": "backend_requirements_clerk_jwt", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "backend_requirements_weasyprint", "to": "backend_requirements_reportlab", "label": "co_used_with", "title": "co_used_with [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "changes_20260525bugfixes_bugfixes_doc", "to": "changes_20260525bugfixes_bug001_rules_of_hooks", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bugfixes_doc", "to": "changes_20260525bugfixes_bug002_xss", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bugfixes_doc", "to": "changes_20260525bugfixes_bug003_alert_blocking", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bugfixes_doc", "to": "changes_20260525bugfixes_bug004_dark_mode_css", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bugfixes_doc", "to": "changes_20260525bugfixes_bug005_abortcontroller", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bugfixes_doc", "to": "changes_20260525redesign_redesign_doc", "label": "co_authored_with", "title": "co_authored_with [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "changes_20260525bugfixes_bug001_rules_of_hooks", "to": "changes_20260525bugfixes_src_app_jsx", "label": "affects", "title": "affects [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bug002_xss", "to": "changes_20260525bugfixes_src_report_jsx", "label": "affects", "title": "affects [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bug002_xss", "to": "changes_20260525redesign_redesign_doc", "label": "also_documented_in", "title": "also_documented_in [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bug003_alert_blocking", "to": "changes_20260525bugfixes_src_report_jsx", "label": "affects", "title": "affects [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bug004_dark_mode_css", "to": "changes_20260525bugfixes_src_index_css", "label": "affects", "title": "affects [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525bugfixes_bug004_dark_mode_css", "to": "frontend_index_dark_mode_theme", "label": "related_to", "title": "related_to [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "changes_20260525bugfixes_bug005_abortcontroller", "to": "changes_20260525redesign_redesign_doc", "label": "also_documented_in", "title": "also_documented_in [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_redesign_doc", "to": "changes_20260525redesign_error_boundary", "label": "introduces", "title": "introduces [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_redesign_doc", "to": "changes_20260525redesign_framer_motion", "label": "introduces", "title": "introduces [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_redesign_doc", "to": "changes_20260525redesign_page_transition", "label": "introduces", "title": "introduces [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_redesign_doc", "to": "changes_20260525redesign_radix_ui", "label": "introduces", "title": "introduces [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_redesign_doc", "to": "changes_20260525redesign_shadcn_ui_components", "label": "introduces", "title": "introduces [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_redesign_doc", "to": "changes_20260525redesign_sonner", "label": "introduces", "title": "introduces [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_framer_motion", "to": "changes_20260525redesign_page_transition", "label": "depends_on", "title": "depends_on [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "changes_20260525redesign_radix_ui", "to": "changes_20260525redesign_shadcn_ui_components", "label": "depends_on", "title": "depends_on [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "frontend_index_vigia_frontend", "to": "frontend_index_dark_mode_theme", "label": "implements", "title": "implements [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "frontend_index_vigia_frontend", "to": "frontend_index_inter_font", "label": "uses", "title": "uses [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "frontend_index_vigia_frontend", "to": "frontend_index_pymes_target", "label": "targets", "title": "targets [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "frontend_index_vigia_frontend", "to": "frontend_index_vite_react", "label": "uses", "title": "uses [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}];
+const LEGEND = [{"cid": 0, "color": "#4E79A7", "label": "Vigia", "count": 8}, {"cid": 1, "color": "#F28E2B", "label": "Bug Fixes 2026-05-25", "count": 7}, {"cid": 2, "color": "#E15759", "label": "Vigia Frontend (index.html)", "count": 7}, {"cid": 3, "color": "#76B7B2", "label": "UI/UX Redesign 2026-05-25", "count": 7}, {"cid": 4, "color": "#59A14F", "label": "Clerk JWT Validation", "count": 3}, {"cid": 5, "color": "#EDC948", "label": "Celery 5.4.0", "count": 2}, {"cid": 6, "color": "#B07AA1", "label": "ReportLab 4.2.2", "count": 2}, {"cid": 7, "color": "#FF9DA7", "label": "AdminDashboard", "count": 1}, {"cid": 8, "color": "#9C755F", "label": "EditOrgModal", "count": 1}, {"cid": 9, "color": "#BAB0AC", "label": "EditUserModal", "count": 1}, {"cid": 10, "color": "#4E79A7", "label": "OrgAnalyticsModal", "count": 1}, {"cid": 11, "color": "#F28E2B", "label": "django-cors-headers 4.6.0", "count": 1}, {"cid": 12, "color": "#E15759", "label": "django-filter 24.3", "count": 1}, {"cid": 13, "color": "#76B7B2", "label": "openpyxl 3.1.5", "count": 1}, {"cid": 14, "color": "#59A14F", "label": "python-decouple 3.8", "count": 1}, {"cid": 15, "color": "#EDC948", "label": "Resend Email 2.0.0", "count": 1}, {"cid": 16, "color": "#B07AA1", "label": "ErrorBoundary", "count": 1}, {"cid": 17, "color": "#FF9DA7", "label": "PageTransition", "count": 1}, {"cid": 18, "color": "#9C755F", "label": "TermsModal", "count": 1}, {"cid": 19, "color": "#BAB0AC", "label": "ThemeProvider", "count": 1}, {"cid": 20, "color": "#4E79A7", "label": "useTheme", "count": 1}, {"cid": 21, "color": "#F28E2B", "label": "useApiSetup", "count": 1}, {"cid": 22, "color": "#E15759", "label": "DashboardLayout", "count": 1}, {"cid": 23, "color": "#76B7B2", "label": "setTokenGetter", "count": 1}, {"cid": 24, "color": "#59A14F", "label": "signalAuthReady", "count": 1}, {"cid": 25, "color": "#EDC948", "label": "cn", "count": 1}, {"cid": 26, "color": "#B07AA1", "label": "formatDate", "count": 1}, {"cid": 27, "color": "#FF9DA7", "label": "getSeverityColor", "count": 1}, {"cid": 28, "color": "#9C755F", "label": "getSeverityLabel", "count": 1}, {"cid": 29, "color": "#BAB0AC", "label": "getStatusColor", "count": 1}, {"cid": 30, "color": "#4E79A7", "label": "getStatusLabel", "count": 1}, {"cid": 31, "color": "#F28E2B", "label": "Dashboard", "count": 1}, {"cid": 32, "color": "#E15759", "label": "JoinTeam", "count": 1}, {"cid": 33, "color": "#76B7B2", "label": "Login", "count": 1}, {"cid": 34, "color": "#59A14F", "label": "PaymentCancel", "count": 1}, {"cid": 35, "color": "#EDC948", "label": "PaymentSuccess", "count": 1}, {"cid": 36, "color": "#B07AA1", "label": "Plans", "count": 1}, {"cid": 37, "color": "#FF9DA7", "label": "Profile", "count": 1}, {"cid": 38, "color": "#9C755F", "label": "Register", "count": 1}, {"cid": 39, "color": "#BAB0AC", "label": "Report", "count": 1}, {"cid": 40, "color": "#4E79A7", "label": "ScanHistory", "count": 1}, {"cid": 41, "color": "#F28E2B", "label": "Settings", "count": 1}, {"cid": 42, "color": "#E15759", "label": "TermsAndConditions", "count": 1}, {"cid": 43, "color": "#76B7B2", "label": "URLs", "count": 1}, {"cid": 44, "color": "#59A14F", "label": "Frontend Design Skill", "count": 1}];
+
+// HTML-escape helper — prevents XSS when injecting graph data into innerHTML
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Build vis datasets
+const nodesDS = new vis.DataSet(RAW_NODES.map(n => ({
+  id: n.id, label: n.label, color: n.color, size: n.size,
+  font: n.font, title: n.title,
+  _community: n.community, _community_name: n.community_name,
+  _source_file: n.source_file, _file_type: n.file_type, _degree: n.degree,
+})));
+
+const edgesDS = new vis.DataSet(RAW_EDGES.map((e, i) => ({
+  id: i, from: e.from, to: e.to,
+  label: '',
+  title: e.title,
+  dashes: e.dashes,
+  width: e.width,
+  color: e.color,
+  arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+})));
+
+const container = document.getElementById('graph');
+const network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
+  physics: {
+    enabled: true,
+    solver: 'forceAtlas2Based',
+    forceAtlas2Based: {
+      gravitationalConstant: -60,
+      centralGravity: 0.005,
+      springLength: 120,
+      springConstant: 0.08,
+      damping: 0.4,
+      avoidOverlap: 0.8,
+    },
+    stabilization: { iterations: 200, fit: true },
+  },
+  interaction: {
+    hover: true,
+    tooltipDelay: 100,
+    hideEdgesOnDrag: true,
+    navigationButtons: false,
+    keyboard: false,
+  },
+  nodes: { shape: 'dot', borderWidth: 1.5 },
+  edges: { smooth: { type: 'continuous', roundness: 0.2 }, selectionWidth: 3 },
+});
+
+network.once('stabilizationIterationsDone', () => {
+  network.setOptions({ physics: { enabled: false } });
+});
+
+function showInfo(nodeId) {
+  const n = nodesDS.get(nodeId);
+  if (!n) return;
+  const neighborIds = network.getConnectedNodes(nodeId);
+  const neighborItems = neighborIds.map(nid => {
+    const nb = nodesDS.get(nid);
+    const color = nb ? nb.color.background : '#555';
+    return `<span class="neighbor-link" style="border-left-color:${esc(color)}" onclick="focusNode(${JSON.stringify(nid)})">${esc(nb ? nb.label : nid)}</span>`;
+  }).join('');
+  document.getElementById('info-content').innerHTML = `
+    <div class="field"><b>${esc(n.label)}</b></div>
+    <div class="field">Type: ${esc(n._file_type || 'unknown')}</div>
+    <div class="field">Community: ${esc(n._community_name)}</div>
+    <div class="field">Source: ${esc(n._source_file || '-')}</div>
+    <div class="field">Degree: ${n._degree}</div>
+    ${neighborIds.length ? `<div class="field" style="margin-top:8px;color:#aaa;font-size:11px">Neighbors (${neighborIds.length})</div><div id="neighbors-list">${neighborItems}</div>` : ''}
+  `;
+}
+
+function focusNode(nodeId) {
+  network.focus(nodeId, { scale: 1.4, animation: true });
+  network.selectNodes([nodeId]);
+  showInfo(nodeId);
+}
+
+// Track hovered node — hover detection is more reliable than click params
+let hoveredNodeId = null;
+network.on('hoverNode', params => {
+  hoveredNodeId = params.node;
+  container.style.cursor = 'pointer';
+});
+network.on('blurNode', () => {
+  hoveredNodeId = null;
+  container.style.cursor = 'default';
+});
+container.addEventListener('click', () => {
+  if (hoveredNodeId !== null) {
+    showInfo(hoveredNodeId);
+    network.selectNodes([hoveredNodeId]);
+  }
+});
+network.on('click', params => {
+  if (params.nodes.length > 0) {
+    showInfo(params.nodes[0]);
+  } else if (hoveredNodeId === null) {
+    document.getElementById('info-content').innerHTML = '<span class="empty">Click a node to inspect it</span>';
+  }
+});
+
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('search-results');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  searchResults.innerHTML = '';
+  if (!q) { searchResults.style.display = 'none'; return; }
+  const matches = RAW_NODES.filter(n => n.label.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { searchResults.style.display = 'none'; return; }
+  searchResults.style.display = 'block';
+  matches.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'search-item';
+    el.textContent = n.label;
+    el.style.borderLeft = `3px solid ${n.color.background}`;
+    el.style.paddingLeft = '8px';
+    el.onclick = () => {
+      network.focus(n.id, { scale: 1.5, animation: true });
+      network.selectNodes([n.id]);
+      showInfo(n.id);
+      searchResults.style.display = 'none';
+      searchInput.value = '';
+    };
+    searchResults.appendChild(el);
+  });
+});
+document.addEventListener('click', e => {
+  if (!searchResults.contains(e.target) && e.target !== searchInput)
+    searchResults.style.display = 'none';
+});
+
+const hiddenCommunities = new Set();
+
+const selectAllCb = document.getElementById('select-all-cb');
+
+function updateSelectAllState() {
+  const total = LEGEND.length;
+  const hidden = hiddenCommunities.size;
+  selectAllCb.checked = hidden === 0;
+  selectAllCb.indeterminate = hidden > 0 && hidden < total;
+}
+
+function toggleAllCommunities(hide) {
+  document.querySelectorAll('.legend-item').forEach(item => {
+    hide ? item.classList.add('dimmed') : item.classList.remove('dimmed');
+  });
+  document.querySelectorAll('.legend-cb').forEach(cb => {
+    cb.checked = !hide;
+  });
+  LEGEND.forEach(c => {
+    if (hide) hiddenCommunities.add(c.cid); else hiddenCommunities.delete(c.cid);
+  });
+  const updates = RAW_NODES.map(n => ({ id: n.id, hidden: hide }));
+  nodesDS.update(updates);
+  updateSelectAllState();
+}
+
+const legendEl = document.getElementById('legend');
+LEGEND.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'legend-cb';
+  cb.checked = true;
+  cb.addEventListener('change', (e) => {
+    e.stopPropagation();
+    if (cb.checked) {
+      hiddenCommunities.delete(c.cid);
+      item.classList.remove('dimmed');
+    } else {
+      hiddenCommunities.add(c.cid);
+      item.classList.add('dimmed');
+    }
+    const updates = RAW_NODES
+      .filter(n => n.community === c.cid)
+      .map(n => ({ id: n.id, hidden: !cb.checked }));
+    nodesDS.update(updates);
+    updateSelectAllState();
+  });
+  item.innerHTML = `<div class="legend-dot" style="background:${c.color}"></div>
+    <span class="legend-label">${c.label}</span>
+    <span class="legend-count">${c.count}</span>`;
+  item.prepend(cb);
+  item.onclick = (e) => {
+    if (e.target === cb) return;
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change'));
+  };
+  legendEl.appendChild(item);
+});
+</script>
+<script>
+// Render hyperedges as shaded regions
+const hyperedges = [];
+// afterDrawing passes ctx already transformed to network coordinate space.
+// Draw node positions raw — no manual pan/zoom/DPR math needed.
+network.on('afterDrawing', function(ctx) {
+    hyperedges.forEach(h => {
+        const positions = h.nodes
+            .map(nid => network.getPositions([nid])[nid])
+            .filter(p => p !== undefined);
+        if (positions.length < 2) return;
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = '#6366f1';
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Centroid and expanded hull in network coordinates
+        const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+        const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+        const expanded = positions.map(p => ({
+            x: cx + (p.x - cx) * 1.15,
+            y: cy + (p.y - cy) * 1.15
+        }));
+        ctx.moveTo(expanded[0].x, expanded[0].y);
+        expanded.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        // Label
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#4f46e5';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(h.label, cx, cy - 5);
+        ctx.restore();
+    });
+});
+</script>
+</body>
+</html>

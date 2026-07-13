@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import DateRangeReportDialog from '@/components/DateRangeReportDialog'
 import {
     ScanSearch, FileText, Loader2, Filter, Clock,
-    AlertTriangle, CheckCircle2, XCircle,
+    AlertTriangle, CheckCircle2, XCircle, CalendarRange,
 } from 'lucide-react'
 
 const FILTERS = [
@@ -33,6 +34,7 @@ export default function ScanHistory() {
     const [scans,   setScans]   = useState([])
     const [loading, setLoading] = useState(true)
     const [filter,  setFilter]  = useState('all')
+    const [showReportDialog, setShowReportDialog] = useState(false)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -66,8 +68,18 @@ export default function ScanHistory() {
                     </p>
                 </div>
 
-                {/* Filters */}
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowReportDialog(true)}
+                        className="gap-2"
+                    >
+                        <CalendarRange className="w-4 h-4 text-purple-500" />
+                        Reporte por fecha
+                    </Button>
+
+                    {/* Filters */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
                     <Filter className="w-3.5 h-3.5 text-muted-foreground mr-0.5" />
                     {FILTERS.map(({ key, label }) => (
                         <Button
@@ -80,6 +92,7 @@ export default function ScanHistory() {
                             {label}
                         </Button>
                     ))}
+                </div>
                 </div>
             </div>
 
@@ -150,6 +163,11 @@ export default function ScanHistory() {
                     </CardContent>
                 )}
             </Card>
+
+            <DateRangeReportDialog
+                open={showReportDialog}
+                onClose={() => setShowReportDialog(false)}
+            />
         </div>
     )
 }

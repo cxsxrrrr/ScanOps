@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - heading "Vigia" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - heading "Bienvenido de vuelta" [level=2] [ref=e13]
+        - paragraph [ref=e14]: Inicia sesion para acceder a tu panel de seguridad
+        - generic [ref=e20]:
+          - link "Terminos y Condiciones" [ref=e21] [cursor=pointer]:
+            - /url: /terms
+          - paragraph [ref=e25]: Al iniciar sesion aceptas nuestros terminos de uso, politica de privacidad y el uso responsable de la plataforma de auditoria de seguridad.
+        - generic [ref=e141]:
+          - generic [ref=e142]:
+            - generic [ref=e145]:
+              - paragraph [ref=e146]: serodriguez0601@gmail.com
+              - button "Edit" [ref=e147] [cursor=pointer]
+            - generic [ref=e150]:
+              - generic [ref=e151]:
+                - generic [ref=e152]:
+                  - generic [ref=e153]:
+                    - generic:
+                      - group:
+                        - generic: "8"
+                        - generic: "3"
+                        - generic: "7"
+                        - generic: "7"
+                        - generic: "4"
+                        - generic: "3"
+                      - textbox "Enter verification code" [active] [ref=e154]: "837743"
+                  - generic [ref=e155]: Incorrect code
+                  - generic [ref=e176]:
+                    - paragraph
+                    - paragraph [ref=e177]: Incorrect code
+                - button "Didn't receive a code? Resend (25)" [disabled]
+              - generic [ref=e156]:
+                - button [ref=e157] [cursor=pointer]
+                - link "Use another method" [ref=e162] [cursor=pointer]:
+                  - /url: http://localhost:5173/CLERK-ROUTER/HASH/factor-one
+          - generic [ref=e165]:
+            - generic [ref=e167]:
+              - paragraph [ref=e168]: Secured by
+              - link "Clerk logo" [ref=e169] [cursor=pointer]:
+                - /url: https://go.clerk.com/components
+            - paragraph [ref=e175]: Development mode
+      - paragraph [ref=e26]:
+        - text: ¿No tienes cuenta?
+        - link "Regístrate" [ref=e27] [cursor=pointer]:
+          - /url: /register
+  - region "Notifications alt+T"

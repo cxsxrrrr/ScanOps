@@ -1,0 +1,174 @@
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic: Vigia
+          - generic:
+            - button
+        - generic: Navegación
+        - navigation:
+          - generic:
+            - link:
+              - /url: /
+              - generic: Dashboard
+          - generic:
+            - link:
+              - /url: /urls
+              - generic: URLs
+          - generic:
+            - link:
+              - /url: /scans
+              - generic: Escaneos
+          - generic:
+            - link:
+              - /url: /plans
+              - generic: Planes
+          - generic:
+            - link:
+              - /url: /profile
+              - generic: Perfil
+          - generic:
+            - link:
+              - /url: /settings
+              - generic: Configuración
+          - generic:
+            - link:
+              - /url: /admin
+              - generic: Admin
+        - generic:
+          - link:
+            - /url: /terms
+            - generic: Términos y Condiciones
+        - generic:
+          - generic:
+            - generic:
+              - button
+            - generic:
+              - generic:
+                - paragraph: Samuel
+                - generic: ADMIN
+              - generic: ULTIMATE
+      - main:
+        - generic:
+          - generic:
+            - button
+            - heading [level=2]: Historial de Escaneos
+          - generic:
+            - button
+            - generic:
+              - text: Sistema activo
+              - generic: ·
+              - text: v2.0
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=1]: Historial de Escaneos
+                  - paragraph: Revisa los resultados de tus auditorías de seguridad.
+                - generic:
+                  - button: Reporte por fecha
+                  - generic:
+                    - button: Todos
+                    - button: Completado
+                    - button: En progreso
+                    - button: Pendiente
+                    - button: Error
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - link:
+                        - /url: /scans/27/report
+                        - generic:
+                          - generic:
+                            - paragraph: https://www.agrocappture.com
+                            - paragraph: 2 jun. 2026, 11:11 a. m. — 2 jun. 2026, 11:14 a. m.
+                        - generic:
+                          - generic: "10"
+                          - generic: "3"
+                          - generic: Completado
+                    - generic:
+                      - link:
+                        - /url: /scans/26/report
+                        - generic:
+                          - generic:
+                            - paragraph: https://database-pg1.c5olw5iuyqi7.us-east-1.rds.amazonaws.com
+                            - paragraph: 25 may. 2026, 06:56 p. m. — 25 may. 2026, 06:56 p. m.
+                        - generic:
+                          - generic: "1"
+                          - generic: Completado
+                    - generic:
+                      - link:
+                        - /url: /scans/25/report
+                        - generic:
+                          - generic:
+                            - paragraph: http://52.200.46.51
+                            - paragraph: 25 may. 2026, 06:52 p. m. — 25 may. 2026, 06:52 p. m.
+                        - generic:
+                          - generic: "1"
+                          - generic: "3"
+                          - generic: "2"
+                          - generic: Completado
+                    - generic:
+                      - link:
+                        - /url: /scans/24/report
+                        - generic:
+                          - generic:
+                            - paragraph: https://hardtechsolutions.fbennassar.dev/
+                            - paragraph: 25 may. 2026, 06:15 p. m. — 25 may. 2026, 06:15 p. m.
+                        - generic:
+                          - generic: "1"
+                          - generic: "1"
+                          - generic: "10"
+                          - generic: "6"
+                          - generic: Completado
+                    - generic:
+                      - link:
+                        - /url: /scans/23/report
+                        - generic:
+                          - generic:
+                            - paragraph: https://google.com
+                            - paragraph: 25 may. 2026, 06:13 p. m. — 25 may. 2026, 06:14 p. m.
+                        - generic:
+                          - generic: "2"
+                          - generic: "18"
+                          - generic: "22"
+                          - generic: Completado
+                    - generic:
+                      - link:
+                        - /url: /scans/22/report
+                        - generic:
+                          - generic:
+                            - paragraph: https://www.agrocappture.com
+                            - paragraph: 25 may. 2026, 04:04 p. m. — 25 may. 2026, 04:07 p. m.
+                        - generic:
+                          - generic: "1"
+                          - generic: "14"
+                          - generic: "14"
+                          - generic: Completado
+    - region "Notifications alt+T"
+  - dialog:
+    - generic:
+      - heading [level=2]: Reporte por rango de fechas
+      - paragraph: Genera un reporte PDF o Excel con todos los escaneos de tu organización en el período seleccionado.
+    - generic:
+      - generic:
+        - text: Período
+        - combobox [expanded]:
+          - generic: Últimos 30 días
+      - generic:
+        - paragraph: Rango seleccionado
+        - paragraph: 2026-06-13 → 2026-07-12
+    - generic:
+      - button: Excel
+      - button: PDF
+    - button:
+      - generic: Close
+  - listbox [ref=f2e280]:
+    - option "Últimos 7 días" [ref=f2e281]
+    - option "Últimos 30 días" [active] [selected] [ref=f2e284]
+    - option "Mes actual" [ref=f2e290]
+    - option "Mes específico" [ref=f2e293]
+    - option "Personalizado" [ref=f2e296]

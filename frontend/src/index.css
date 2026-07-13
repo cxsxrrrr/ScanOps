@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     /* Light mode — clean SaaS minimal (Linear / Notion style) */
     --background: 220 16% 95%;        /* cool off-white — cards float above this */
     --foreground: 220 43% 11%;        /* near-black — max heading contrast */
@@ -40,6 +41,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     /* Dark mode — deep navy, refined glassmorphism */
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;
@@ -91,6 +93,22 @@
   button:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+  /* Native date/month inputs — adapt picker to theme */
+  input[type="date"],
+  input[type="month"] {
+    accent-color: hsl(var(--primary));
+    color-scheme: light dark;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.85);
+    opacity: 0.9;
+    cursor: pointer;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
   }
 }
 
