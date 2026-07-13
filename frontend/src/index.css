@@ -94,21 +94,33 @@
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
-  /* Native date/month inputs — adapt picker to theme */
+  /* Native date/month inputs — adapt picker to theme.
+     "color-scheme: light dark" lets the *OS* decide which icon variant to
+     paint, independent of our app's manual .dark toggle — when the OS is
+     in light mode but the app is toggled to dark, that renders the black
+     (light-scheme) calendar icon on a dark input, i.e. invisible. Force it
+     to follow the app's own theme class instead of the OS preference. */
   input[type="date"],
   input[type="month"] {
     accent-color: hsl(var(--primary));
-    color-scheme: light dark;
+    color-scheme: light;
   }
-  .dark input[type="date"]::-webkit-calendar-picker-indicator,
-  .dark input[type="month"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.85);
-    opacity: 0.9;
-    cursor: pointer;
+  .dark input[type="date"],
+  .dark input[type="month"] {
+    color-scheme: dark;
   }
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="month"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
+    opacity: 0.75;
+    padding: 4px;
+    border-radius: 6px;
+    transition: opacity 0.15s, background-color 0.15s;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="month"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    background-color: hsl(var(--primary) / 0.15);
   }
 }
 

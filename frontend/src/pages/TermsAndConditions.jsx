@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useUser } from '@clerk/clerk-react'
 import {
     ShieldCheck, ArrowLeft, ScrollText, Scale, Lock,
     AlertTriangle, Database, Globe, FileText, ChevronDown,
@@ -109,6 +110,7 @@ Nuestra responsabilidad total no excederá el monto pagado por el usuario en los
 ]
 
 export default function TermsAndConditions() {
+    const { isSignedIn } = useUser()
     const [expandedSection, setExpandedSection] = useState(null)
     const [expandAll, setExpandAll] = useState(false)
 
@@ -132,10 +134,10 @@ export default function TermsAndConditions() {
 
                 <div className="relative z-10 max-w-4xl mx-auto px-6 py-16 text-center">
                     <Link
-                        to="/register"
+                        to={isSignedIn ? '/' : '/register'}
                         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors"
                     >
-                        <ArrowLeft className="w-3 h-3" /> Volver al registro
+                        <ArrowLeft className="w-3 h-3" /> {isSignedIn ? 'Volver al dashboard' : 'Volver al registro'}
                     </Link>
                     <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-500/30">
                         <ScrollText className="w-8 h-8 text-white" />
@@ -218,15 +220,18 @@ export default function TermsAndConditions() {
                 <div className="mt-12 glass-card rounded-xl p-6 text-center">
                     <ShieldCheck className="w-8 h-8 text-blue-400 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                        Al crear una cuenta en Vigia, confirmas que has leído, comprendido y aceptas
-                        estos Términos y Condiciones en su totalidad.
+                        {isSignedIn
+                            ? 'Al usar Vigia, confirmas que has leído, comprendido y aceptas estos Términos y Condiciones en su totalidad.'
+                            : 'Al crear una cuenta en Vigia, confirmas que has leído, comprendido y aceptas estos Términos y Condiciones en su totalidad.'}
                     </p>
-                    <Link
-                        to="/register"
-                        className="inline-flex items-center gap-2 mt-4 px-6 py-2.5 rounded-lg gradient-primary text-white font-medium text-sm hover:opacity-90 transition-opacity"
-                    >
-                        Crear cuenta
-                    </Link>
+                    {!isSignedIn && (
+                        <Link
+                            to="/register"
+                            className="inline-flex items-center gap-2 mt-4 px-6 py-2.5 rounded-lg gradient-primary text-white font-medium text-sm hover:opacity-90 transition-opacity"
+                        >
+                            Crear cuenta
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>
