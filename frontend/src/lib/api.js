@@ -2,6 +2,9 @@
  * Axios API client with Clerk token injection.
  */
 import axios from 'axios'
+import { toast } from 'sonner'
+
+let suspendedToastShown = false
 
 const api = axios.create({
   baseURL: '/api',
@@ -47,8 +50,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid — Clerk will handle redirect
-      console.warn('Unauthorized request')
+      const detail = error.response?.data?.detail || ''
+      // Clerk's own session is still valid from the browser's point of view
+      // (it never revokes a session for this), so a blocked user just gets
+      // this specific detail message on every request forever — surface it
+      // once instead of leaving them staring at silent failures.
+      if (detail.toLowerCase().includes('suspendida') && !suspendedToastShown) {
+        suspendedToastShown = true
+        toast.error(detail, { duration: 10000 })
+      } else if (!detail) {
+        console.warn('Unauthorized request')
+      }
     }
     return Promise.reject(error)
   }

@@ -63,6 +63,7 @@ class AdminActionLog(models.Model):
         ('role_change', 'Role Change'),
         ('org_change', 'Organization Change'),
         ('plan_change', 'Plan Change'),
+        ('block_change', 'Block/Unblock'),
     ]
 
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)

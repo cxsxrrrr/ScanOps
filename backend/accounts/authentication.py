@@ -153,6 +153,11 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
             except IntegrityError:
                 user = User.objects.get(clerk_user_id=clerk_user_id)
 
+        if not user.is_active:
+            raise exceptions.AuthenticationFailed(
+                'Tu cuenta ha sido suspendida. Contacta al administrador.'
+            )
+
         return (user, payload)
 
     def authenticate_header(self, request):

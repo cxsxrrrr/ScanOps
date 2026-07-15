@@ -331,6 +331,9 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
+                                                    <Button variant="secondary" size="sm" onClick={() => setViewingAnalytics(org.id)}>
+                                                        Ver miembros
+                                                    </Button>
                                                     <Button variant="outline" size="sm" onClick={() => setEditingOrg(org)}>
                                                         Editar
                                                     </Button>
@@ -340,7 +343,7 @@ export default function AdminDashboard() {
                                     })
                                 )}
                             </div>
-                            
+
                             {totalPagesOrgs > 1 && (
                                 <div className="flex items-center justify-between px-4 py-3 border-t">
                                     <span className="text-sm text-muted-foreground">Página {pageOrgs} de {totalPagesOrgs}</span>
@@ -381,10 +384,13 @@ export default function AdminDashboard() {
                                     <p className="p-8 text-center text-muted-foreground text-sm">No se encontraron resultados.</p>
                                 ) : (
                                     paginatedUsers.map((u) => (
-                                        <div key={u.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
+                                        <div key={u.id} className={`flex items-center justify-between p-4 hover:bg-accent/50 transition-colors ${u.is_active === false ? 'opacity-60' : ''}`}>
                                             <div>
                                                 <p className="font-medium text-sm">{u.email}</p>
                                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                    {u.is_active === false && (
+                                                        <Badge variant="destructive" className="text-[10px]">BLOQUEADO</Badge>
+                                                    )}
                                                     <span className={`role-badge-${u.role || 'user'} px-2 py-0.5 rounded text-[10px] font-bold`}>
                                                         {u.role?.toUpperCase()}
                                                     </span>

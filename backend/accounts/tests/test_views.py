@@ -61,13 +61,24 @@ class AccountsViewsTest(TestCase):
         self.assertEqual(response.data['name'], 'PYME Test')
 
     def test_update_organization(self):
-        """PATCH /api/auth/organization/ → updates name."""
+        """PATCH /api/auth/organization/ → updates name (org_admin only)."""
+        self.user.role = 'org_admin'
+        self.user.save(update_fields=['role'])
         response = self.client.patch('/api/auth/organization/', {
             'name': 'Updated PYME',
         })
         self.assertEqual(response.status_code, 200)
         self.org.refresh_from_db()
         self.assertEqual(self.org.name, 'Updated PYME')
+
+    def test_update_organization_requires_org_admin(self):
+        """PATCH /api/auth/organization/ name → 403 for a plain member."""
+        response = self.client.patch('/api/auth/organization/', {
+            'name': 'Hacked Name',
+        })
+        self.assertEqual(response.status_code, 403)
+        self.org.refresh_from_db()
+        self.assertEqual(self.org.name, 'PYME Test')
 
     def test_create_organization_for_user_without_one(self):
         """PATCH /api/auth/organization/ without org → creates one."""

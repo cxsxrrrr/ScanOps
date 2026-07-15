@@ -7,13 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Loader2, Trash2, Ban, ShieldCheck } from 'lucide-react'
 import api from '../../lib/api'
 import { toast } from 'sonner'
 
 export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
     const [loading, setLoading] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    const [blocking, setBlocking] = useState(false)
+    const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const [isActive, setIsActive] = useState(true)
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -33,6 +37,8 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                 // to "Sin organización" and wiping their org FK on save.
                 organization: user.organization_id ?? user.organization?.id ?? null,
             })
+            setIsActive(user.is_active !== false)
+            setConfirmingDelete(false)
         }
     }, [user, open])
 
@@ -52,8 +58,22 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
         }
     }
 
+    async function handleToggleBlock() {
+        setBlocking(true)
+        try {
+            const nextActive = !isActive
+            await api.put(`/admin/users/${user.id}/`, { is_active: nextActive })
+            setIsActive(nextActive)
+            toast.success(nextActive ? 'Usuario desbloqueado' : 'Usuario bloqueado')
+            onSuccess()
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Error al actualizar el estado del usuario')
+        } finally {
+            setBlocking(false)
+        }
+    }
+
     async function handleDelete() {
-        if (!confirm(`¿Estás seguro de que quieres eliminar a ${user.email}? Esta acción no se puede deshacer.`)) return
         setDeleting(true)
         try {
             await api.delete(`/admin/users/${user.id}/`)
@@ -71,12 +91,17 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Editar Usuario</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        Editar Usuario
+                        {!isActive && (
+                            <Badge variant="destructive" className="text-[10px]">BLOQUEADO</Badge>
+                        )}
+                    </DialogTitle>
                     <DialogDescription>
                         {user.email}
                     </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
@@ -96,7 +121,7 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                             />
                         </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label>Rol</Label>
@@ -132,28 +157,63 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                             </Select>
                         </div>
                     </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+                        <div className="text-sm">
+                            <p className="font-medium">{isActive ? 'Cuenta activa' : 'Cuenta bloqueada'}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {isActive
+                                    ? 'El usuario puede iniciar sesión y usar la plataforma.'
+                                    : 'El usuario no puede autenticarse ni realizar ninguna acción.'}
+                            </p>
+                        </div>
+                        <Button
+                            variant={isActive ? 'outline' : 'default'}
+                            size="sm"
+                            onClick={handleToggleBlock}
+                            disabled={blocking}
+                        >
+                            {blocking ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                : isActive ? <Ban className="w-3.5 h-3.5 mr-1.5" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />}
+                            {isActive ? 'Bloquear' : 'Desbloquear'}
+                        </Button>
+                    </div>
                 </div>
 
                 <DialogFooter className="flex items-center sm:justify-between">
-                    <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={handleDelete}
-                        disabled={deleting || loading}
-                        className="w-full sm:w-auto"
-                    >
-                        {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                        Eliminar
-                    </Button>
-                    <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="w-full sm:w-auto">
-                            Cancelar
+                    {confirmingDelete ? (
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <span className="text-xs text-muted-foreground">¿Eliminar a {user.email}? No se puede deshacer.</span>
+                            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+                                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sí, eliminar'}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+                                Cancelar
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setConfirmingDelete(true)}
+                            disabled={deleting || loading}
+                            className="w-full sm:w-auto"
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Eliminar
                         </Button>
-                        <Button onClick={handleSave} disabled={loading || deleting} className="w-full sm:w-auto">
-                            {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                            Guardar
-                        </Button>
-                    </div>
+                    )}
+                    {!confirmingDelete && (
+                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="w-full sm:w-auto">
+                                Cancelar
+                            </Button>
+                            <Button onClick={handleSave} disabled={loading || deleting} className="w-full sm:w-auto">
+                                {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                                Guardar
+                            </Button>
+                        </div>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

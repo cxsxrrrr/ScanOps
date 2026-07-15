@@ -76,6 +76,12 @@ def organization_detail(request):
         serializer = OrganizationSerializer(request.user.organization)
         return Response(serializer.data)
 
+    if 'name' in request.data and request.user.role not in User.ORG_MANAGER_ROLES:
+        return Response(
+            {'detail': 'Solo un administrador de la organización puede cambiar su nombre.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     serializer = OrganizationSerializer(
         request.user.organization, data=request.data, partial=True
     )

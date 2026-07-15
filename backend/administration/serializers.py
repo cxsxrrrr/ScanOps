@@ -37,7 +37,7 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'role', 'organization']
+        fields = ['first_name', 'last_name', 'role', 'organization', 'is_active']
         
     def validate_role(self, value):
         roles = dict(User.ROLE_CHOICES)

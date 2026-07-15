@@ -136,8 +136,14 @@ def scan_config(request):
 @permission_classes([IsAdminUser])
 def user_list(request):
     """List all users (admin view)."""
+    from accounts.clerk_api import backfill_real_emails, is_placeholder_email
+
+    all_users = list(User.objects.select_related('organization').all())
+    if any(is_placeholder_email(u.email) for u in all_users):
+        backfill_real_emails(all_users)
+
     users = User.objects.select_related('organization').all().values(
-        'id', 'email', 'first_name', 'last_name', 'role',
+        'id', 'email', 'first_name', 'last_name', 'role', 'is_active',
         'organization_id', 'organization__name', 'organization__plan',
         'date_joined', 'last_login', 'accepted_terms_at',
     )
@@ -230,9 +236,15 @@ def user_detail(request, pk):
 
     elif request.method == 'PUT':
         from .serializers import AdminUserUpdateSerializer
+        if user.pk == request.user.pk and request.data.get('is_active') is False:
+            return Response(
+                {'detail': 'No puedes bloquear tu propia cuenta.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         before_role = user.role
         before_org_id = user.organization_id
         before_org_name = str(user.organization) if user.organization else ''
+        before_active = user.is_active
         serializer = AdminUserUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -255,6 +267,16 @@ def user_detail(request, pk):
                     target_user_email=user.email,
                     before_value=before_org_name,
                     after_value=str(user.organization) if user.organization else '',
+                )
+            if 'is_active' in request.data and user.is_active != before_active:
+                AdminActionLog.objects.create(
+                    action='block_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_user_id=user.id,
+                    target_user_email=user.email,
+                    before_value='active' if before_active else 'blocked',
+                    after_value='active' if user.is_active else 'blocked',
                 )
             return Response(UserSerializer(user).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -17,10 +17,18 @@ import { User, Building, Save, Loader2, LogOut, AlertTriangle } from 'lucide-rea
 export default function Profile() {
     const { user } = useUser()
     const [profile, setProfile] = useState({ first_name: '', last_name: '', organization_name: '', member_count: 1 })
+    const [originalOrgName, setOriginalOrgName] = useState('')
+    const [role, setRole] = useState('user')
     const [saving,    setSaving]    = useState(false)
     const [leaving,   setLeaving]   = useState(false)
     const [leaveError, setLeaveError] = useState(null)
     const [showModal, setShowModal] = useState(false)
+    const [showRenameConfirm, setShowRenameConfirm] = useState(false)
+
+    // Only the org's own admins can rename it — a regular invited member
+    // can view it but the only membership action available to them is
+    // leaving (below).
+    const canEditOrgName = role === 'org_admin' || role === 'admin'
 
     useEffect(() => {
         const controller = new AbortController()
@@ -31,25 +39,39 @@ export default function Profile() {
     async function loadProfile(signal) {
         try {
             const res = await api.get('/auth/profile/', { signal })
+            const orgName = res.data.organization?.name || ''
             setProfile({
                 first_name: res.data.first_name || '',
                 last_name: res.data.last_name || '',
-                organization_name: res.data.organization?.name || '',
+                organization_name: orgName,
                 member_count: res.data.organization?.member_count || 1,
             })
+            setOriginalOrgName(orgName)
+            setRole(res.data.role || 'user')
         } catch (err) {
             if (err.code === 'ERR_CANCELED') return
             console.error('Failed to load profile:', err)
         }
     }
 
-    async function handleSave(e) {
+    function handleSubmit(e) {
         e.preventDefault()
+        const orgNameChanged = canEditOrgName && profile.organization_name !== originalOrgName
+        if (orgNameChanged) {
+            setShowRenameConfirm(true)
+            return
+        }
+        doSave()
+    }
+
+    async function doSave() {
+        setShowRenameConfirm(false)
         setSaving(true)
         try {
             await api.patch('/auth/profile/', profile)
-            if (profile.organization_name) {
+            if (canEditOrgName && profile.organization_name !== originalOrgName) {
                 await api.patch('/auth/organization/', { name: profile.organization_name })
+                setOriginalOrgName(profile.organization_name)
             }
             toast.success('Perfil guardado exitosamente.')
         } catch (err) {
@@ -93,7 +115,7 @@ export default function Profile() {
                     <CardTitle className="text-base">Información Personal</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSave} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Email read-only */}
                         <div className="space-y-1.5">
                             <Label>Email</Label>
@@ -133,7 +155,14 @@ export default function Profile() {
                                 value={profile.organization_name}
                                 onChange={(e) => setProfile({ ...profile, organization_name: e.target.value })}
                                 placeholder="Nombre de tu empresa"
+                                disabled={!canEditOrgName}
+                                className={!canEditOrgName ? 'text-muted-foreground' : ''}
                             />
+                            {!canEditOrgName && (
+                                <p className="text-xs text-muted-foreground">
+                                    Solo un administrador de la organización puede cambiar este nombre.
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex justify-end pt-2">
@@ -201,6 +230,31 @@ export default function Profile() {
                         <Button variant="destructive" onClick={leaveOrganization} disabled={leaving}>
                             {leaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
                             {leaving ? 'Saliendo...' : 'Confirmar Salida'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Org rename confirmation dialog */}
+            <Dialog open={showRenameConfirm} onOpenChange={(open) => !saving && setShowRenameConfirm(open)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Building className="w-5 h-5 text-purple-500" />
+                            ¿Cambiar el nombre de la organización?
+                        </DialogTitle>
+                        <DialogDescription>
+                            Todo tu equipo verá el nuevo nombre <strong>"{profile.organization_name}"</strong> en
+                            lugar de "{originalOrgName}".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setShowRenameConfirm(false)} disabled={saving}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={doSave} disabled={saving}>
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            Confirmar Cambio
                         </Button>
                     </DialogFooter>
                 </DialogContent>
