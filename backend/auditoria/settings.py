@@ -160,6 +160,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'notifications.tasks.send_scheduled_reports',
         'schedule': 3600.0,  # Check every hour
     },
+    'cleanup-expired-invitations': {
+        'task': 'accounts.tasks.cleanup_expired_invitations',
+        'schedule': 86400.0,  # Once a day
+    },
 }
 
 # --- Google Gemini ---

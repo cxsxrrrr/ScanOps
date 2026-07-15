@@ -10,7 +10,7 @@ from accounts.models import User, Organization, PLAN_LIMITS
 from accounts.serializers import OrganizationSerializer
 from scanner.models import Scan, Finding
 from notifications.models import EmailLog
-from audit_log.models import APIRequestLog
+from audit_log.models import APIRequestLog, AdminActionLog
 
 
 class IsAdminUser(permissions.BasePermission):
@@ -179,34 +179,6 @@ def update_org_plan(request, pk):
     })
 
 
-@api_view(['PATCH'])
-@permission_classes([IsAdminUser])
-def update_user_role(request, pk):
-    """Update a user's role (admin only)."""
-    try:
-        user = User.objects.get(pk=pk)
-    except User.DoesNotExist:
-        return Response(
-            {'detail': 'User not found.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    new_role = request.data.get('role')
-    if new_role not in dict(User.ROLE_CHOICES):
-        return Response(
-            {'detail': 'Invalid role. Options: user, admin'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    user.role = new_role
-    user.save(update_fields=['role'])
-    return Response({
-        'detail': f'Role updated to {new_role}.',
-        'user_id': user.id,
-        'role': user.role,
-    })
-
-
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAdminUser])
 def organization_detail(request, pk):
@@ -221,9 +193,20 @@ def organization_detail(request, pk):
 
     elif request.method == 'PUT':
         from .serializers import AdminOrgUpdateSerializer
+        before_plan = org.plan
         serializer = AdminOrgUpdateSerializer(org, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            if 'plan' in request.data and org.plan != before_plan:
+                AdminActionLog.objects.create(
+                    action='plan_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_org_id=org.id,
+                    target_org_name=org.name,
+                    before_value=before_plan,
+                    after_value=org.plan,
+                )
             return Response(OrganizationSerializer(org).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -247,9 +230,32 @@ def user_detail(request, pk):
 
     elif request.method == 'PUT':
         from .serializers import AdminUserUpdateSerializer
+        before_role = user.role
+        before_org_id = user.organization_id
+        before_org_name = str(user.organization) if user.organization else ''
         serializer = AdminUserUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            if 'role' in request.data and user.role != before_role:
+                AdminActionLog.objects.create(
+                    action='role_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_user_id=user.id,
+                    target_user_email=user.email,
+                    before_value=before_role,
+                    after_value=user.role,
+                )
+            if 'organization' in request.data and user.organization_id != before_org_id:
+                AdminActionLog.objects.create(
+                    action='org_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_user_id=user.id,
+                    target_user_email=user.email,
+                    before_value=before_org_name,
+                    after_value=str(user.organization) if user.organization else '',
+                )
             return Response(UserSerializer(user).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
