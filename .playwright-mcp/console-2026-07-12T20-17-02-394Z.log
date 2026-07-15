@@ -1,5 +1,0 @@
-[     113ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=ff95c854:20102
-[     459ms] [WARNING] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview @ https://ample-duck-89.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js:18
-[   11993ms] [ERROR] Failed to load resource: the server responded with a status of 422 (Unprocessable Entity) @ http://localhost:5173/api/reports/org/?start=2026-06-13&end=2026-07-12&format=pdf:0
-[  275737ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DateRangeReportDialog.jsx?t=1783887698084:0
-[  275737ms] [ERROR] [vite] Failed to reload /src/components/DateRangeReportDialog.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881

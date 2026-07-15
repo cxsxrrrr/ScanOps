@@ -27,6 +27,7 @@ except ImportError:
     REPORTLAB_AVAILABLE = False
 
 from scanner.models import Scan
+from urls_manager.models import URLAsset
 from .models import ExecutiveSummary
 from .serializers import ExecutiveSummarySerializer
 
@@ -110,7 +111,7 @@ def _finalize_table_sheet(ws, header_row, tab_color=None, zebra=True):
 def _build_pdf_with_reportlab(scan, findings, summary_content):
     """Build a styled PDF using ReportLab (cross-platform, always available)."""
     def _clean(text):
-        return (str(text or '')).replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
+        return (str(text or '')).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
     def _severity_color(severity):
         mapping = {
@@ -707,7 +708,7 @@ def _severity_color_rl(severity):
 
 
 def _clean_text(text):
-    return (str(text or '')).replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
+    return (str(text or '')).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
 
 def _aggregate_stats(findings_qs):
@@ -722,7 +723,7 @@ def _aggregate_stats(findings_qs):
     }
 
 
-def _build_org_pdf_reportlab(scans, org_name, start_str, end_str):
+def _build_org_pdf_reportlab(scans, org_name, start_str, end_str, scope_label=None):
     """Build an aggregate PDF for an organization's scans in a date range."""
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -773,6 +774,7 @@ def _build_org_pdf_reportlab(scans, org_name, start_str, end_str):
         _clean_text(
             f'Periodo: {start_str} a {end_str} · '
             f'Escaneos incluidos: {len(scans)}'
+            + (f' · Sitio: {scope_label}' if scope_label else '')
         ),
         meta_style,
     ))
@@ -790,26 +792,55 @@ def _build_org_pdf_reportlab(scans, org_name, start_str, end_str):
         'info': sum(1 for f in all_findings if f.severity == 'INFO'),
     }
 
+    header_cell_style = ParagraphStyle(
+        'OrgStatHeader', parent=styles['Normal'],
+        fontName='Helvetica-Bold', fontSize=9,
+        textColor=rl_colors.white, alignment=1,
+    )
+    stat_value_style = ParagraphStyle(
+        'OrgStatValue', parent=styles['Normal'],
+        fontName='Helvetica', fontSize=9,
+        textColor=rl_colors.HexColor('#1f2937'), alignment=1,
+    )
+    finding_header_style = ParagraphStyle(
+        'OrgFindingHeader', parent=styles['Normal'],
+        fontName='Helvetica-Bold', fontSize=7,
+        textColor=rl_colors.white,
+    )
+    finding_body_style = ParagraphStyle(
+        'OrgFindingBody', parent=styles['Normal'],
+        fontName='Helvetica', fontSize=7, leading=9,
+        textColor=rl_colors.HexColor('#1f2937'),
+    )
+    finding_severity_style = ParagraphStyle(
+        'OrgFindingSeverity', parent=styles['Normal'],
+        fontName='Helvetica-Bold', fontSize=7, leading=9,
+        textColor=rl_colors.white,
+    )
+
+    # Usable page width: LETTER (8.5in) minus 0.5in margins each side.
+    page_width = 7.5 * inch
+
     story.append(Paragraph('Resumen de Hallazgos', section_style))
+    stat_headers = ['Total', 'Críticos', 'Altos', 'Medios', 'Bajos', 'Info']
+    stat_values = [stats['total'], stats['critical'], stats['high'],
+                   stats['medium'], stats['low'], stats['info']]
     stats_data = [
-        ['Total', 'Críticos', 'Altos', 'Medios', 'Bajos', 'Info'],
-        [stats['total'], stats['critical'], stats['high'],
-         stats['medium'], stats['low'], stats['info']],
+        [Paragraph(h, header_cell_style) for h in stat_headers],
+        [Paragraph(str(v), stat_value_style) for v in stat_values],
     ]
-    stats_tbl = Table(stats_data, repeatRows=1)
+    stats_tbl = Table(stats_data, repeatRows=1, colWidths=[page_width / 6] * 6)
     stats_tbl.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), rl_colors.HexColor('#1e293b')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.5, rl_colors.HexColor('#cbd5e1')),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(stats_tbl)
 
     # Per-scan sections
+    finding_col_widths = [0.7 * inch, 1.6 * inch, 1.1 * inch, page_width - 0.7 * inch - 1.6 * inch - 1.1 * inch]
     story.append(Paragraph('Detalle por Escaneo', section_style))
     for s in scans:
         findings = list(s.findings.all())
@@ -825,26 +856,32 @@ def _build_org_pdf_reportlab(scans, org_name, start_str, end_str):
         if not findings:
             story.append(Paragraph('Sin hallazgos en este escaneo.', body_style))
             continue
-        rows = [['Severidad', 'Titulo', 'Categoria', 'Descripcion']]
+        rows = [[
+            Paragraph('Severidad', finding_header_style),
+            Paragraph('Titulo', finding_header_style),
+            Paragraph('Categoria', finding_header_style),
+            Paragraph('Descripcion', finding_header_style),
+        ]]
         for f in findings:
             rows.append([
-                _clean_text(f.severity),
-                _clean_text(f.title),
-                _clean_text(f.category),
-                _clean_text(f.description),
+                Paragraph(_clean_text(f.severity), finding_severity_style),
+                Paragraph(_clean_text(f.title), finding_body_style),
+                Paragraph(_clean_text(f.category), finding_body_style),
+                Paragraph(_clean_text(f.description), finding_body_style),
             ])
-        tbl = Table(rows, repeatRows=1)
-        tbl.setStyle(TableStyle([
+        tbl = Table(rows, repeatRows=1, colWidths=finding_col_widths)
+        table_style_cmds = [
             ('BACKGROUND', (0, 0), (-1, 0), rl_colors.HexColor('#1e293b')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 7),
             ('GRID', (0, 0), (-1, -1), 0.3, rl_colors.HexColor('#cbd5e1')),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TEXTCOLOR', (0, 1), (0, -1), _severity_color_rl(f.severity))
-            if False else ('TEXTCOLOR', (0, 1), (0, -1), rl_colors.HexColor('#1f2937')),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ]))
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ]
+        for row_idx, f in enumerate(findings, start=1):
+            table_style_cmds.append(
+                ('BACKGROUND', (0, row_idx), (0, row_idx), _severity_color_rl(f.severity))
+            )
+        tbl.setStyle(TableStyle(table_style_cmds))
         story.append(tbl)
         story.append(Spacer(1, 6))
 
@@ -857,7 +894,7 @@ def _build_org_pdf_reportlab(scans, org_name, start_str, end_str):
     return buffer
 
 
-def _build_org_excel(scans, org_name, start_str, end_str):
+def _build_org_excel(scans, org_name, start_str, end_str, scope_label=None):
     """Build an aggregate Excel workbook for an organization's scans."""
     wb = Workbook()
     header_font = Font(name='Calibri', size=11, bold=True, color='FFFFFFFF')
@@ -869,6 +906,8 @@ def _build_org_excel(scans, org_name, start_str, end_str):
     cell_align = Alignment(wrap_text=True, vertical='top')
 
     period_sub = f'{org_name} · Periodo: {start_str} a {end_str}'
+    if scope_label:
+        period_sub += f' · Sitio: {scope_label}'
 
     def _auto_width(ws, border_=border, align_=cell_align, skip_rows=0):
         for col in ws.columns:
@@ -980,31 +1019,39 @@ def _build_org_excel(scans, org_name, start_str, end_str):
     return buffer
 
 
-def _build_org_report_file_response(scans, fmt, org_name, start_str, end_str):
-    """Build an HTTP response with the org-level report file."""
+def _safe_filename_part(text):
+    """Slugify arbitrary text for use in a Content-Disposition filename."""
+    keep = [c if (c.isalnum() or c in ('-', '_')) else '_' for c in text.strip()]
+    return ''.join(keep)[:60] or 'sitio'
+
+
+def _build_org_report_file_response(scans, fmt, org_name, start_str, end_str, scope_label=None):
+    """Build an HTTP response with the org-level (or single-URL) report file."""
+    name_suffix = f'_{_safe_filename_part(scope_label)}' if scope_label else ''
+
     if fmt == 'pdf':
         if not REPORTLAB_AVAILABLE:
             return Response(
                 {'detail': 'ReportLab no disponible para generar PDF.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        buffer = _build_org_pdf_reportlab(scans, org_name, start_str, end_str)
+        buffer = _build_org_pdf_reportlab(scans, org_name, start_str, end_str, scope_label)
         resp = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         safe_name = org_name.replace(' ', '_')
         resp['Content-Disposition'] = (
-            f'attachment; filename="reporte_org_{safe_name}_{start_str}_{end_str}.pdf"'
+            f'attachment; filename="reporte_org_{safe_name}{name_suffix}_{start_str}_{end_str}.pdf"'
         )
         return resp
 
     if fmt in ('excel', 'xlsx'):
-        buffer = _build_org_excel(scans, org_name, start_str, end_str)
+        buffer = _build_org_excel(scans, org_name, start_str, end_str, scope_label)
         resp = HttpResponse(
             buffer.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
         safe_name = org_name.replace(' ', '_')
         resp['Content-Disposition'] = (
-            f'attachment; filename="reporte_org_{safe_name}_{start_str}_{end_str}.xlsx"'
+            f'attachment; filename="reporte_org_{safe_name}{name_suffix}_{start_str}_{end_str}.xlsx"'
         )
         return resp
 
@@ -1023,6 +1070,8 @@ def org_report(request):
         start: YYYY-MM-DD (required)
         end:   YYYY-MM-DD (required)
         format: pdf | excel | xlsx (default: pdf)
+        url_asset_id: optional — scope the report to a single registered URL
+                      instead of the whole organization.
     """
     org = request.user.organization
     if not org:
@@ -1055,11 +1104,25 @@ def org_report(request):
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    scans = Scan.objects.filter(
+    scope_label = None
+    url_asset_id = request.query_params.get('url_asset_id')
+    scans_qs = Scan.objects.filter(
         url_asset__organization_id=org.id,
         started_at__date__gte=start_d,
         started_at__date__lte=end_d,
-    ).select_related('url_asset').prefetch_related('findings').order_by('-started_at')
+    )
+    if url_asset_id:
+        try:
+            url_asset = URLAsset.objects.get(pk=url_asset_id, organization_id=org.id)
+        except (URLAsset.DoesNotExist, ValueError):
+            return Response(
+                {'detail': 'URL no encontrada o no pertenece a tu organizacion.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        scans_qs = scans_qs.filter(url_asset_id=url_asset.pk)
+        scope_label = url_asset.name or url_asset.url
+
+    scans = scans_qs.select_related('url_asset').prefetch_related('findings').order_by('-started_at')
 
     if not scans.exists():
         return Response(
@@ -1068,4 +1131,4 @@ def org_report(request):
         )
 
     fmt = (request.query_params.get('format') or 'pdf').lower()
-    return _build_org_report_file_response(scans, fmt, org.name, start_str, end_str)
+    return _build_org_report_file_response(scans, fmt, org.name, start_str, end_str, scope_label)

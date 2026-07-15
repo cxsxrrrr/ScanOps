@@ -385,7 +385,7 @@ export default function AdminDashboard() {
                                             <div>
                                                 <p className="font-medium text-sm">{u.email}</p>
                                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                    <span className={`${u.role === 'admin' ? 'role-badge-admin' : 'role-badge-user'} px-2 py-0.5 rounded text-[10px] font-bold`}>
+                                                    <span className={`role-badge-${u.role || 'user'} px-2 py-0.5 rounded text-[10px] font-bold`}>
                                                         {u.role?.toUpperCase()}
                                                     </span>
                                                     {u.organization__name && (

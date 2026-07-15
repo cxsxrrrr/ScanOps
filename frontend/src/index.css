@@ -183,8 +183,9 @@
   .plan-badge-ultimate { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold; }
 
   /* ─── Role badges ────────────────────────────────────────────── */
-  .role-badge-admin { @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-xs font-semibold; }
-  .role-badge-user  { @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 text-xs font-semibold; }
+  .role-badge-admin     { @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-xs font-semibold; }
+  .role-badge-org_admin { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold; }
+  .role-badge-user      { @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 text-xs font-semibold; }
 
   /* ─── Severity badges ────────────────────────────────────────── */
   .severity-critical { @apply bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-500/25; }

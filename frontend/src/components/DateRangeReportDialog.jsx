@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Download, Loader2, CalendarRange, FileSpreadsheet, FileText, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../lib/api'
@@ -63,6 +63,18 @@ export default function DateRangeReportDialog({ open, onClose }) {
     const [customStart, setCustomStart] = useState('')
     const [customEnd, setCustomEnd] = useState('')
     const [downloading, setDownloading] = useState(false)
+    const [urlAssets, setUrlAssets] = useState([])
+    const [scopeUrlId, setScopeUrlId] = useState('all')
+
+    useEffect(() => {
+        if (!open) return
+        let cancelled = false
+        api.get('/urls/').then(res => {
+            if (cancelled) return
+            setUrlAssets(res.data.results || res.data || [])
+        }).catch(() => {})
+        return () => { cancelled = true }
+    }, [open])
 
     const currentYear = new Date().getFullYear()
     const years = useMemo(
@@ -95,8 +107,9 @@ export default function DateRangeReportDialog({ open, onClose }) {
         }
         setDownloading(true)
         try {
+            const scopeParam = scopeUrlId !== 'all' ? `&url_asset_id=${scopeUrlId}` : ''
             const res = await api.get(
-                `/reports/org/?start=${range.start}&end=${range.end}&format=${format}`,
+                `/reports/org/?start=${range.start}&end=${range.end}&format=${format}${scopeParam}`,
                 { responseType: 'blob' }
             )
             const ctype = res.headers['content-type'] || ''
@@ -110,6 +123,10 @@ export default function DateRangeReportDialog({ open, onClose }) {
                     }
                 } catch { /* fall through to download */ }
             }
+            if (!res.data || res.data.size === 0) {
+                toast.error('El servidor devolvió un archivo vacío. Intenta de nuevo.')
+                return
+            }
             const url = URL.createObjectURL(res.data)
             const a = document.createElement('a')
             a.href = url
@@ -117,7 +134,9 @@ export default function DateRangeReportDialog({ open, onClose }) {
             document.body.appendChild(a)
             a.click()
             document.body.removeChild(a)
-            URL.revokeObjectURL(url)
+            // Revoke on next tick — revoking synchronously right after click()
+            // can race with the browser's own download handoff in some builds.
+            setTimeout(() => URL.revokeObjectURL(url), 0)
             toast.success(`Reporte ${format.toUpperCase()} descargado.`)
         } catch (err) {
             if (err.response && err.response.data instanceof Blob) {
@@ -143,12 +162,29 @@ export default function DateRangeReportDialog({ open, onClose }) {
                         Reporte por rango de fechas
                     </DialogTitle>
                     <DialogDescription>
-                        Genera un reporte PDF o Excel con todos los escaneos
-                        de tu organización en el período seleccionado.
+                        Genera un reporte PDF o Excel con los escaneos
+                        {scopeUrlId === 'all' ? ' de tu organización' : ' del sitio seleccionado'} en el período elegido.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="scope">Alcance</Label>
+                        <Select value={scopeUrlId} onValueChange={setScopeUrlId}>
+                            <SelectTrigger id="scope">
+                                <SelectValue placeholder="Elige el alcance" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas las URLs (organización)</SelectItem>
+                                {urlAssets.map((u) => (
+                                    <SelectItem key={u.id} value={String(u.id)}>
+                                        {u.name || u.url}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="space-y-2">
                         <Label htmlFor="preset">Período</Label>
                         <Select value={preset} onValueChange={setPreset}>

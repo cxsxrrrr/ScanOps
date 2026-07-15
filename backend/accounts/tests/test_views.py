@@ -85,12 +85,19 @@ class AccountsViewsTest(TestCase):
         self.assertIsNotNone(user_no_org.organization)
         self.assertEqual(user_no_org.organization.name, 'New Org')
 
-    def test_organization_requires_name(self):
-        """PATCH /api/auth/organization/ without name → 400."""
+    def test_organization_auto_created_without_name(self):
+        """PATCH /api/auth/organization/ without name still auto-creates one
+        (fallback name from the user's email) — intentional lazy-creation
+        design so checkout/URL registration never 404s on a brand-new user.
+        """
         user_no_org = User.objects.create_user(
             username='noorg2',
             email='noorg2@test.com',
         )
         self.client.force_authenticate(user=user_no_org)
         response = self.client.patch('/api/auth/organization/', {})
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 201)
+        user_no_org.refresh_from_db()
+        self.assertIsNotNone(user_no_org.organization)
+        # Founding member of a brand-new org is auto-promoted to org_admin.
+        self.assertEqual(user_no_org.role, 'org_admin')

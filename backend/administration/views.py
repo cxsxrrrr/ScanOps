@@ -138,7 +138,7 @@ def user_list(request):
     """List all users (admin view)."""
     users = User.objects.select_related('organization').all().values(
         'id', 'email', 'first_name', 'last_name', 'role',
-        'organization__name', 'organization__plan',
+        'organization_id', 'organization__name', 'organization__plan',
         'date_joined', 'last_login', 'accepted_terms_at',
     )
     return Response(list(users))

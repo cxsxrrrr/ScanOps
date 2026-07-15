@@ -27,8 +27,11 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                 first_name: user.first_name || '',
                 last_name: user.last_name || '',
                 role: user.role || 'user',
-                // Handle populated organization object or null
-                organization: user.organization?.id || null, 
+                // user_list (admin panel) returns a flat organization_id, not a
+                // nested organization object — reading user.organization?.id
+                // was always undefined, silently resetting every edited user
+                // to "Sin organización" and wiping their org FK on save.
+                organization: user.organization_id ?? user.organization?.id ?? null,
             })
         }
     }, [user, open])
@@ -106,7 +109,8 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="user">User</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="org_admin">Org Admin</SelectItem>
+                                    <SelectItem value="admin">Admin (plataforma)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

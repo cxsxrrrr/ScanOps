@@ -9,19 +9,19 @@ class OrganizationModelTest(TestCase):
     """Tests for the Organization model."""
 
     def test_str_representation(self):
-        """__str__ returns the org name."""
+        """__str__ returns the org name with its plan for readability in logs/admin."""
         org = Organization.objects.create(name='Mi Empresa')
-        self.assertEqual(str(org), 'Mi Empresa')
+        self.assertEqual(str(org), 'Mi Empresa (Free)')
 
     def test_default_plan_is_free(self):
         """Default plan should be 'free'."""
         org = Organization.objects.create(name='Test')
         self.assertEqual(org.plan, 'free')
 
-    def test_default_url_limit_is_5(self):
-        """Default URL limit should be 5."""
+    def test_default_url_limit_is_1(self):
+        """Default URL limit matches the free plan's limit (PLAN_LIMITS['free'])."""
         org = Organization.objects.create(name='Test')
-        self.assertEqual(org.url_limit, 5)
+        self.assertEqual(org.url_limit, 1)
 
     def test_ordering_by_name(self):
         """Organizations ordered alphabetically by name."""
@@ -44,8 +44,8 @@ class UserModelTest(TestCase):
         )
 
     def test_str_representation(self):
-        """__str__ returns email and org."""
-        self.assertEqual(str(self.user), 'test@example.com (Test Org)')
+        """__str__ returns email and org (org's own __str__ includes its plan)."""
+        self.assertEqual(str(self.user), 'test@example.com (Test Org (Free))')
 
     def test_is_admin_user_false_by_default(self):
         """Default role is 'user', not admin."""

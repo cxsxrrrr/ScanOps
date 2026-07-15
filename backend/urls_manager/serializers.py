@@ -16,8 +16,11 @@ class URLAssetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = URLAsset
-        fields = ['id', 'url', 'last_scan_status', 'last_scan_at', 'created_at']
+        fields = ['id', 'url', 'name', 'last_scan_status', 'last_scan_at', 'created_at']
         read_only_fields = ['id', 'last_scan_status', 'last_scan_at', 'created_at']
+
+    def validate_name(self, value):
+        return value.strip()
 
     def validate_url(self, value):
         """Validate URL format and protocol."""
