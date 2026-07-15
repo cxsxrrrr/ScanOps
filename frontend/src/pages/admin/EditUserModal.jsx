@@ -52,7 +52,10 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
             onSuccess()
             onOpenChange(false)
         } catch (err) {
-            toast.error('Error al actualizar usuario')
+            const detail = err.response?.data?.organization?.[0]
+                || err.response?.data?.role?.[0]
+                || err.response?.data?.detail
+            toast.error(detail || 'Error al actualizar usuario')
         } finally {
             setLoading(false)
         }
