@@ -339,7 +339,12 @@ def analytics_organization_detail(request, pk):
     except Organization.DoesNotExist:
         return Response({'detail': 'Organization not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Users
+    # Users — backfill real Clerk emails in place of the placeholder
+    # {clerk_id}@clerk.user before serializing (same as user_list).
+    from accounts.clerk_api import backfill_real_emails, is_placeholder_email
+    org_users = list(org.users.all())
+    if any(is_placeholder_email(u.email) for u in org_users):
+        backfill_real_emails(org_users)
     users_data = org.users.values('id', 'email', 'role', 'last_login')
 
     # URLs and their last scan status
