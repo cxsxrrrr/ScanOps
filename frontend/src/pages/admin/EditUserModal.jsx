@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Trash2, Ban, ShieldCheck } from 'lucide-react'
+import { Loader2, Trash2, Ban, ShieldCheck, AlertTriangle } from 'lucide-react'
 import api from '../../lib/api'
 import { toast } from 'sonner'
 
@@ -17,6 +17,8 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
     const [deleting, setDeleting] = useState(false)
     const [blocking, setBlocking] = useState(false)
     const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const [confirmingBlock, setConfirmingBlock] = useState(false)
+    const [confirmingPromote, setConfirmingPromote] = useState(false)
     const [isActive, setIsActive] = useState(true)
     const [formData, setFormData] = useState({
         first_name: '',
@@ -39,12 +41,26 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
             })
             setIsActive(user.is_active !== false)
             setConfirmingDelete(false)
+            setConfirmingBlock(false)
+            setConfirmingPromote(false)
         }
     }, [user, open])
 
     if (!user) return null
 
-    async function handleSave() {
+    const isPromotingToAdmin = formData.role === 'admin' && user.role !== 'admin'
+
+    function handleSaveClick() {
+        // Privilege escalation to platform admin gets an explicit confirm
+        // step — every other field change (name/org/lower roles) doesn't.
+        if (isPromotingToAdmin && !confirmingPromote) {
+            setConfirmingPromote(true)
+            return
+        }
+        doSave()
+    }
+
+    async function doSave() {
         setLoading(true)
         try {
             await api.put(`/admin/users/${user.id}/`, formData)
@@ -58,10 +74,21 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
             toast.error(detail || 'Error al actualizar usuario')
         } finally {
             setLoading(false)
+            setConfirmingPromote(false)
         }
     }
 
-    async function handleToggleBlock() {
+    function handleToggleBlockClick() {
+        // Only blocking (not unblocking) is destructive enough to confirm —
+        // it locks the person out of their own account immediately.
+        if (isActive && !confirmingBlock) {
+            setConfirmingBlock(true)
+            return
+        }
+        doToggleBlock()
+    }
+
+    async function doToggleBlock() {
         setBlocking(true)
         try {
             const nextActive = !isActive
@@ -73,6 +100,7 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
             toast.error(err.response?.data?.detail || 'Error al actualizar el estado del usuario')
         } finally {
             setBlocking(false)
+            setConfirmingBlock(false)
         }
     }
 
@@ -161,26 +189,53 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
-                        <div className="text-sm">
-                            <p className="font-medium">{isActive ? 'Cuenta activa' : 'Cuenta bloqueada'}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {isActive
-                                    ? 'El usuario puede iniciar sesión y usar la plataforma.'
-                                    : 'El usuario no puede autenticarse ni realizar ninguna acción.'}
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm">
+                                <p className="font-medium">{isActive ? 'Cuenta activa' : 'Cuenta bloqueada'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {isActive
+                                        ? 'El usuario puede iniciar sesión y usar la plataforma.'
+                                        : 'El usuario no puede autenticarse ni realizar ninguna acción.'}
+                                </p>
+                            </div>
+                            {!confirmingBlock && (
+                                <Button
+                                    variant={isActive ? 'outline' : 'default'}
+                                    size="sm"
+                                    onClick={handleToggleBlockClick}
+                                    disabled={blocking}
+                                >
+                                    {blocking ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                        : isActive ? <Ban className="w-3.5 h-3.5 mr-1.5" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />}
+                                    {isActive ? 'Bloquear' : 'Desbloquear'}
+                                </Button>
+                            )}
+                        </div>
+                        {confirmingBlock && (
+                            <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-border">
+                                <span className="text-xs text-muted-foreground mr-auto">
+                                    ¿Bloquear a {user.email}? Perderá acceso de inmediato.
+                                </span>
+                                <Button variant="ghost" size="sm" onClick={() => setConfirmingBlock(false)} disabled={blocking}>
+                                    Cancelar
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={doToggleBlock} disabled={blocking}>
+                                    {blocking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sí, bloquear'}
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {confirmingPromote && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+                            <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                            <p className="text-destructive">
+                                Estás por otorgar rol <strong>Admin (plataforma)</strong> a {user.email}.
+                                Tendrá acceso total al panel de administración. Confirma con "Guardar" para continuar.
                             </p>
                         </div>
-                        <Button
-                            variant={isActive ? 'outline' : 'default'}
-                            size="sm"
-                            onClick={handleToggleBlock}
-                            disabled={blocking}
-                        >
-                            {blocking ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                                : isActive ? <Ban className="w-3.5 h-3.5 mr-1.5" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />}
-                            {isActive ? 'Bloquear' : 'Desbloquear'}
-                        </Button>
-                    </div>
+                    )}
                 </div>
 
                 <DialogFooter className="flex items-center sm:justify-between">
@@ -211,9 +266,14 @@ export function EditUserModal({ user, orgs, open, onOpenChange, onSuccess }) {
                             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="w-full sm:w-auto">
                                 Cancelar
                             </Button>
-                            <Button onClick={handleSave} disabled={loading || deleting} className="w-full sm:w-auto">
+                            <Button
+                                onClick={handleSaveClick}
+                                disabled={loading || deleting}
+                                variant={confirmingPromote ? 'destructive' : 'default'}
+                                className="w-full sm:w-auto"
+                            >
                                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                                Guardar
+                                {confirmingPromote ? 'Confirmar y Guardar' : 'Guardar'}
                             </Button>
                         </div>
                     )}

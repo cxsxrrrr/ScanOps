@@ -18,14 +18,6 @@ class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            f"Admin check: user={request.user.email} "
-            f"role={request.user.role} "
-            f"clerk_id={request.user.clerk_user_id} "
-            f"is_auth={request.user.is_authenticated}"
-        )
         return request.user.role == 'admin'
 
 
@@ -439,6 +431,55 @@ def audit_log_list(request):
         'id', 'created_at', 'method', 'path', 'query_string', 'status_code',
         'ip_address', 'user_id', 'user_email', 'organization_id',
         'organization_name', 'user_agent', 'response_time_ms',
+    )
+
+    return Response({
+        'count': total,
+        'page': page,
+        'page_size': page_size,
+        'results': list(results),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_action_log_list(request):
+    """List admin action audit logs (who changed what) — paginated.
+
+    Distinct from audit_log_list (raw HTTP request trail): this is the
+    explicit before/after diff for sensitive actions — role changes,
+    org moves, plan changes, block/unblock — so an admin can answer
+    "who did this and what did it change" without querying the DB.
+    """
+    logs = AdminActionLog.objects.all()
+
+    action = request.query_params.get('action')
+    if action:
+        logs = logs.filter(action=action)
+
+    search = request.query_params.get('search')
+    if search:
+        logs = logs.filter(
+            Q(performed_by_email__icontains=search)
+            | Q(target_user_email__icontains=search)
+            | Q(target_org_name__icontains=search)
+        )
+
+    try:
+        page = max(int(request.query_params.get('page', 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = min(max(int(request.query_params.get('page_size', 50)), 1), 200)
+    except (TypeError, ValueError):
+        page_size = 50
+
+    total = logs.count()
+    start = (page - 1) * page_size
+    results = logs[start:start + page_size].values(
+        'id', 'created_at', 'action', 'performed_by_email',
+        'target_user_id', 'target_user_email', 'target_org_id',
+        'target_org_name', 'before_value', 'after_value',
     )
 
     return Response({

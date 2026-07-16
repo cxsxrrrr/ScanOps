@@ -16,12 +16,14 @@ import {
     Mail, Loader2, RefreshCw, XCircle, Building,
     Crown, Zap, Shield, Check, BarChart3, CheckCircle2,
     Clock, Activity, Search, ChevronLeft, ChevronRight, LifeBuoy,
+    ScrollText,
 } from 'lucide-react'
 
 import { EditOrgModal } from './EditOrgModal'
 import { EditUserModal } from './EditUserModal'
 import { OrgAnalyticsModal } from './OrgAnalyticsModal'
 import { AdminSupportPanel } from './AdminSupportPanel'
+import { AdminAuditLogPanel } from './AdminAuditLogPanel'
 
 const planConfig = {
     free:     { icon: Shield,  label: 'Free',     gradient: 'from-gray-500 to-gray-600',    badge: 'plan-badge-free' },
@@ -47,6 +49,7 @@ export default function AdminDashboard() {
     const [pageOrgs, setPageOrgs] = useState(1)
 
     const [searchUsers, setSearchUsers] = useState('')
+    const [roleFilterUsers, setRoleFilterUsers] = useState('all')
     const [pageUsers, setPageUsers] = useState(1)
 
     const ITEMS_PER_PAGE = 10
@@ -121,7 +124,9 @@ export default function AdminDashboard() {
     const paginatedOrgs = filteredOrgs.slice((pageOrgs - 1) * ITEMS_PER_PAGE, pageOrgs * ITEMS_PER_PAGE)
     const totalPagesOrgs = Math.ceil(filteredOrgs.length / ITEMS_PER_PAGE) || 1
 
-    const filteredUsers = users.filter(user => user.email.toLowerCase().includes(searchUsers.toLowerCase()))
+    const filteredUsers = users
+        .filter(user => user.email.toLowerCase().includes(searchUsers.toLowerCase()))
+        .filter(user => roleFilterUsers === 'all' || user.role === roleFilterUsers)
     const paginatedUsers = filteredUsers.slice((pageUsers - 1) * ITEMS_PER_PAGE, pageUsers * ITEMS_PER_PAGE)
     const totalPagesUsers = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE) || 1
 
@@ -158,6 +163,9 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="support"   className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
                         <LifeBuoy className="w-4 h-4" /> Soporte
+                    </TabsTrigger>
+                    <TabsTrigger value="audit"     className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
+                        <ScrollText className="w-4 h-4" /> Auditoría
                     </TabsTrigger>
                 </TabsList>
 
@@ -372,14 +380,25 @@ export default function AdminDashboard() {
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Users className="w-4 h-4 text-blue-500" /> Usuarios ({users.length})
                             </CardTitle>
-                            <div className="relative w-64">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Buscar usuario..."
-                                    className="pl-8"
-                                    value={searchUsers}
-                                    onChange={(e) => { setSearchUsers(e.target.value); setPageUsers(1); }}
-                                />
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-64">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Buscar usuario..."
+                                        className="pl-8"
+                                        value={searchUsers}
+                                        onChange={(e) => { setSearchUsers(e.target.value); setPageUsers(1); }}
+                                    />
+                                </div>
+                                <Select value={roleFilterUsers} onValueChange={(v) => { setRoleFilterUsers(v); setPageUsers(1); }}>
+                                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos los roles</SelectItem>
+                                        <SelectItem value="user">User</SelectItem>
+                                        <SelectItem value="org_admin">Org Admin</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -487,6 +506,11 @@ export default function AdminDashboard() {
                 {/* Support */}
                 <TabsContent value="support" className="mt-4">
                     <AdminSupportPanel />
+                </TabsContent>
+
+                {/* Audit log */}
+                <TabsContent value="audit" className="mt-4">
+                    <AdminAuditLogPanel />
                 </TabsContent>
             </Tabs>
 

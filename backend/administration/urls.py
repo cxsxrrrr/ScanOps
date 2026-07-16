@@ -16,4 +16,5 @@ urlpatterns = [
     path('analytics/organizations/', views.analytics_organizations, name='analytics-organizations'),
     path('analytics/organizations/<int:pk>/', views.analytics_organization_detail, name='analytics-organization-detail'),
     path('audit-logs/', views.audit_log_list, name='audit-logs'),
+    path('audit-logs/actions/', views.admin_action_log_list, name='admin-action-logs'),
 ]
