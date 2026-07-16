@@ -78,3 +78,22 @@ class TicketMessage(models.Model):
 
     def __str__(self):
         return f"Message on ticket #{self.ticket_id} by {self.author_email}"
+
+
+def _attachment_upload_path(instance, filename):
+    return f"support_attachments/{instance.message.ticket_id}/{filename}"
+
+
+class TicketAttachment(models.Model):
+    """A screenshot attached to a message — image only, size-capped in the view."""
+
+    message = models.ForeignKey(
+        TicketMessage,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    image = models.ImageField(upload_to=_attachment_upload_path)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Attachment on message #{self.message_id}"

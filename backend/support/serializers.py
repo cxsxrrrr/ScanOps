@@ -1,12 +1,31 @@
 """Serializers for the support app."""
 from rest_framework import serializers
-from .models import SupportTicket, TicketMessage
+from .models import SupportTicket, TicketMessage, TicketAttachment
+
+
+class TicketAttachmentSerializer(serializers.ModelSerializer):
+    # Frontend and backend run on different ports/origins in dev, so a
+    # relative /media/... URL would resolve against the wrong host —
+    # build an absolute URI instead.
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TicketAttachment
+        fields = ['id', 'image', 'uploaded_at']
+        read_only_fields = fields
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        url = obj.image.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class TicketMessageSerializer(serializers.ModelSerializer):
+    attachments = TicketAttachmentSerializer(many=True, read_only=True)
+
     class Meta:
         model = TicketMessage
-        fields = ['id', 'author_email', 'is_staff', 'body', 'created_at']
+        fields = ['id', 'author_email', 'is_staff', 'body', 'created_at', 'attachments']
         read_only_fields = fields
 
 

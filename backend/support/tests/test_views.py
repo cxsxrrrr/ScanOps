@@ -1,4 +1,5 @@
 """Tests for the support ticket endpoints."""
+from unittest.mock import patch
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -8,6 +9,15 @@ from support.models import SupportTicket, TicketMessage
 
 class SupportTicketTest(TestCase):
     def setUp(self):
+        # Notification emails are fired via CELERY_TASK_ALWAYS_EAGER (sync)
+        # in tests — stub them out so tests don't hit the real Resend API.
+        patcher1 = patch('support.tasks.notify_new_ticket.delay')
+        patcher2 = patch('support.tasks.notify_ticket_reply.delay')
+        self.mock_notify_new = patcher1.start()
+        self.mock_notify_reply = patcher2.start()
+        self.addCleanup(patcher1.stop)
+        self.addCleanup(patcher2.stop)
+
         self.client = APIClient()
         self.org = Organization.objects.create(name='PYME Test')
         self.other_org = Organization.objects.create(name='Other Org')
@@ -37,6 +47,15 @@ class SupportTicketTest(TestCase):
         ticket = SupportTicket.objects.get(pk=response.data['id'])
         self.assertEqual(ticket.organization_id, self.org.id)
         self.assertEqual(ticket.messages.count(), 1)
+        self.mock_notify_new.assert_called_once_with(ticket.id)
+
+    def test_reply_triggers_notification(self):
+        ticket = SupportTicket.objects.create(organization=self.org, created_by=self.user, subject='A')
+
+        self.client.force_authenticate(user=self.platform_admin)
+        response = self.client.post(f'/api/support/tickets/{ticket.id}/messages/', {'body': 'Hola'})
+        self.assertEqual(response.status_code, 201)
+        self.mock_notify_reply.assert_called_once_with(response.data['id'])
 
     def test_list_scoped_to_own_organization(self):
         SupportTicket.objects.create(organization=self.org, created_by=self.user, subject='A')

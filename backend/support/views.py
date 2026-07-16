@@ -5,11 +5,12 @@ Organization members manage their own tickets; the platform admin
 through the same endpoints — filtered by role instead of duplicating
 list/detail views for the admin panel.
 """
+from PIL import Image, UnidentifiedImageError
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from .models import SupportTicket, TicketMessage
+from .models import SupportTicket, TicketMessage, TicketAttachment
 from .serializers import (
     SupportTicketListSerializer,
     SupportTicketDetailSerializer,
@@ -17,9 +18,38 @@ from .serializers import (
     TicketMessageSerializer,
 )
 
+MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_ATTACHMENTS_PER_MESSAGE = 3
+
 
 def _is_platform_admin(user):
     return user.role == 'admin'
+
+
+def _validate_attachments(files):
+    """Check size/format of uploaded screenshots before touching the DB.
+
+    Returns an error string if any file is invalid, or None on success —
+    validated up front so a bad file never leaves a ticket/message created
+    with only some of its screenshots attached.
+    """
+    if len(files) > MAX_ATTACHMENTS_PER_MESSAGE:
+        return f'Máximo {MAX_ATTACHMENTS_PER_MESSAGE} imágenes por mensaje.'
+
+    for f in files:
+        if f.size > MAX_ATTACHMENT_SIZE:
+            return f'"{f.name}" excede el tamaño máximo de 5MB.'
+        try:
+            Image.open(f).verify()
+        except (UnidentifiedImageError, OSError):
+            return f'"{f.name}" no es una imagen válida.'
+        f.seek(0)
+    return None
+
+
+def _create_attachments(message, files):
+    for f in files:
+        TicketAttachment.objects.create(message=message, image=f)
 
 
 def _get_ticket_for_user(user, pk):
@@ -48,7 +78,7 @@ def ticket_list_create(request):
         if status_filter:
             tickets = tickets.filter(status=status_filter)
 
-        return Response(SupportTicketListSerializer(tickets, many=True).data)
+        return Response(SupportTicketListSerializer(tickets, many=True, context={'request': request}).data)
 
     # POST — open a new ticket
     if not request.user.organization_id:
@@ -56,6 +86,11 @@ def ticket_list_create(request):
 
     serializer = SupportTicketCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+
+    files = request.FILES.getlist('images')
+    error = _validate_attachments(files)
+    if error:
+        return Response({'detail': error}, status=400)
 
     ticket = SupportTicket.objects.create(
         organization_id=request.user.organization_id,
@@ -65,14 +100,22 @@ def ticket_list_create(request):
         category=serializer.validated_data.get('category', 'duda'),
         priority=serializer.validated_data.get('priority', 'medium'),
     )
-    TicketMessage.objects.create(
+    message = TicketMessage.objects.create(
         ticket=ticket,
         author=request.user,
         author_email=request.user.email,
         is_staff=False,
         body=serializer.validated_data['body'],
     )
-    return Response(SupportTicketDetailSerializer(ticket).data, status=status.HTTP_201_CREATED)
+    _create_attachments(message, files)
+
+    from .tasks import notify_new_ticket
+    notify_new_ticket.delay(ticket.id)
+
+    return Response(
+        SupportTicketDetailSerializer(ticket, context={'request': request}).data,
+        status=status.HTTP_201_CREATED,
+    )
 
 
 @api_view(['GET', 'PATCH'])
@@ -83,7 +126,7 @@ def ticket_detail(request, pk):
         return Response({'detail': 'Ticket not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
-        return Response(SupportTicketDetailSerializer(ticket).data)
+        return Response(SupportTicketDetailSerializer(ticket, context={'request': request}).data)
 
     # PATCH — only the platform admin can change status/priority
     if not _is_platform_admin(request.user):
@@ -100,7 +143,7 @@ def ticket_detail(request, pk):
         ticket.closed_at = None
     ticket.save()
 
-    return Response(SupportTicketDetailSerializer(ticket).data)
+    return Response(SupportTicketDetailSerializer(ticket, context={'request': request}).data)
 
 
 @api_view(['POST'])
@@ -114,6 +157,11 @@ def ticket_add_message(request, pk):
     if not body:
         return Response({'detail': 'El mensaje no puede estar vacío.'}, status=400)
 
+    files = request.FILES.getlist('images')
+    error = _validate_attachments(files)
+    if error:
+        return Response({'detail': error}, status=400)
+
     is_staff = _is_platform_admin(request.user)
     message = TicketMessage.objects.create(
         ticket=ticket,
@@ -122,6 +170,7 @@ def ticket_add_message(request, pk):
         is_staff=is_staff,
         body=body,
     )
+    _create_attachments(message, files)
 
     # Any staff reply moves the ticket into in_progress — whether it was
     # freshly open or being reopened from closed.
@@ -133,4 +182,10 @@ def ticket_add_message(request, pk):
         ticket.status = 'in_progress'
         ticket.save(update_fields=['status'])
 
-    return Response(TicketMessageSerializer(message).data, status=status.HTTP_201_CREATED)
+    from .tasks import notify_ticket_reply
+    notify_ticket_reply.delay(message.id)
+
+    return Response(
+        TicketMessageSerializer(message, context={'request': request}).data,
+        status=status.HTTP_201_CREATED,
+    )
