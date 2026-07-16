@@ -9,27 +9,13 @@ import { Input } from '@/components/ui/input'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { LifeBuoy, Loader2, ArrowLeft, Send, Search } from 'lucide-react'
-
-const CATEGORY_LABELS = { error: 'Error', incidencia: 'Incidencia', duda: 'Duda', otro: 'Otro' }
-const PRIORITY_LABELS = { low: 'Baja', medium: 'Media', high: 'Alta' }
-const STATUS_LABELS = { open: 'Abierto', in_progress: 'En progreso', closed: 'Cerrado' }
-// Status colors read as urgency: open (unanswered) is the most critical, closed is resolved/calm.
-const STATUS_COLOR = {
-    open: 'severity-high',
-    in_progress: 'severity-medium',
-    closed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25',
-}
-// Reuse the same severity palette used for scan findings, so criticality reads consistently app-wide.
-const PRIORITY_COLOR = {
-    low: 'severity-low',
-    medium: 'severity-medium',
-    high: 'severity-critical',
-}
-
-function formatDate(iso) {
-    return new Date(iso).toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+import { LifeBuoy, Loader2, ArrowLeft, Send, Search, MoreHorizontal, Paperclip, User } from 'lucide-react'
+import {
+    CATEGORY_LABELS, CATEGORY_ICONS, CATEGORY_ICON_COLOR,
+    PRIORITY_LABELS, PRIORITY_COLOR, STATUS_LABELS, STATUS_COLOR,
+    formatDate, AttachmentThumbs, useImageDropzone, DropOverlay,
+    ImageFileInput, ImageThumbnails,
+} from '../../lib/supportShared.jsx'
 
 export function AdminSupportPanel() {
     const [tickets, setTickets] = useState([])
@@ -124,28 +110,34 @@ export function AdminSupportPanel() {
                 ) : (
                     <CardContent className="p-0">
                         <div className="divide-y divide-border">
-                            {filtered.map(t => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => openTicket(t.id)}
-                                    className="w-full flex items-center justify-between p-3 hover:bg-accent/50 transition-colors text-left"
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium truncate">{t.subject}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            {t.organization} · {t.created_by_email} · {formatDate(t.updated_at)}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                                        <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLOR[t.priority]}`}>
-                                            {PRIORITY_LABELS[t.priority]}
-                                        </Badge>
-                                        <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[t.status]}`}>
-                                            {STATUS_LABELS[t.status]}
-                                        </Badge>
-                                    </div>
-                                </button>
-                            ))}
+                            {filtered.map(t => {
+                                const CategoryIcon = CATEGORY_ICONS[t.category] || MoreHorizontal
+                                return (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => openTicket(t.id)}
+                                        className="w-full flex items-center gap-3 p-3 hover:bg-accent/50 transition-colors text-left"
+                                    >
+                                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[t.category]}`}>
+                                            <CategoryIcon className="w-3.5 h-3.5" />
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium truncate">{t.subject}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {t.organization} · {t.created_by_email} · {formatDate(t.updated_at)}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                                            <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLOR[t.priority]}`}>
+                                                {PRIORITY_LABELS[t.priority]}
+                                            </Badge>
+                                            <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[t.status]}`}>
+                                                {STATUS_LABELS[t.status]}
+                                            </Badge>
+                                        </div>
+                                    </button>
+                                )
+                            })}
                         </div>
                     </CardContent>
                 )}
@@ -154,21 +146,53 @@ export function AdminSupportPanel() {
     )
 }
 
+function AdminMessageBubble({ m }) {
+    return (
+        <div className={`flex gap-2.5 ${m.is_staff ? 'justify-end' : 'justify-start'}`}>
+            {!m.is_staff && (
+                <span className="w-7 h-7 rounded-full bg-accent flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                </span>
+            )}
+            <div className={`max-w-[80%] sm:max-w-md rounded-2xl px-3.5 py-2.5 text-sm ${
+                m.is_staff
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 rounded-tr-sm'
+                    : 'bg-accent border border-border rounded-tl-sm'
+            }`}>
+                <p className="whitespace-pre-wrap">{m.body}</p>
+                <AttachmentThumbs attachments={m.attachments} />
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                    {m.is_staff ? 'Soporte Vigia' : m.author_email} · {formatDate(m.created_at)}
+                </p>
+            </div>
+        </div>
+    )
+}
+
 function AdminTicketThread({ ticket, onBack, onUpdated }) {
     const [body, setBody] = useState('')
+    const [images, setImages] = useState([])
     const [sending, setSending] = useState(false)
     const [updatingStatus, setUpdatingStatus] = useState(false)
+    const { inputRef, isDragging, dragHandlers, addFiles, removeAt, isFull, openPicker } = useImageDropzone(images, setImages)
+    const CategoryIcon = CATEGORY_ICONS[ticket.category] || MoreHorizontal
 
     async function handleSend() {
         if (!body.trim()) return
         setSending(true)
         try {
-            await api.post(`/support/tickets/${ticket.id}/messages/`, { body })
+            const formData = new FormData()
+            formData.append('body', body)
+            images.forEach(img => formData.append('images', img.file))
+            await api.post(`/support/tickets/${ticket.id}/messages/`, formData, {
+                headers: { 'Content-Type': undefined },
+            })
             const res = await api.get(`/support/tickets/${ticket.id}/`)
             onUpdated(res.data)
             setBody('')
+            setImages([])
         } catch (err) {
-            toast.error('Error al enviar el mensaje.')
+            toast.error(err.response?.data?.detail || 'Error al enviar el mensaje.')
         } finally {
             setSending(false)
         }
@@ -197,52 +221,66 @@ function AdminTicketThread({ ticket, onBack, onUpdated }) {
             <Card>
                 <CardContent className="p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <div>
-                            <h2 className="text-lg font-semibold">{ticket.subject}</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {ticket.organization} · {ticket.created_by_email} · Abierto {formatDate(ticket.created_at)}
-                            </p>
+                        <div className="flex items-start gap-3">
+                            <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[ticket.category]}`}>
+                                <CategoryIcon className="w-4 h-4" />
+                            </span>
+                            <div>
+                                <h2 className="text-lg font-semibold leading-tight">{ticket.subject}</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    {ticket.organization} · {ticket.created_by_email} · Abierto {formatDate(ticket.created_at)}
+                                </p>
+                            </div>
                         </div>
-                        <Select value={ticket.status} onValueChange={handleStatusChange} disabled={updatingStatus}>
-                            <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="open">Abierto</SelectItem>
-                                <SelectItem value="in_progress">En progreso</SelectItem>
-                                <SelectItem value="closed">Cerrado</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLOR[ticket.priority]}`}>
+                                {PRIORITY_LABELS[ticket.priority]}
+                            </Badge>
+                            <Select value={ticket.status} onValueChange={handleStatusChange} disabled={updatingStatus}>
+                                <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="open">Abierto</SelectItem>
+                                    <SelectItem value="in_progress">En progreso</SelectItem>
+                                    <SelectItem value="closed">Cerrado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
 
             <div className="space-y-3">
-                {ticket.messages.map(m => (
-                    <div key={m.id} className={`flex ${m.is_staff ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] rounded-xl p-3 text-sm ${
-                            m.is_staff
-                                ? 'bg-emerald-500/10 border border-emerald-500/20'
-                                : 'bg-accent border border-border'
-                        }`}>
-                            <p className="whitespace-pre-wrap">{m.body}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1.5">
-                                {m.is_staff ? 'Soporte Vigia' : m.author_email} · {formatDate(m.created_at)}
-                            </p>
-                        </div>
-                    </div>
-                ))}
+                {ticket.messages.map(m => <AdminMessageBubble key={m.id} m={m} />)}
             </div>
 
-            <div className="flex gap-2">
-                <Textarea
-                    rows={2}
-                    value={body}
-                    onChange={e => setBody(e.target.value)}
-                    placeholder="Responder al usuario..."
-                    className="resize-none"
-                />
-                <Button onClick={handleSend} disabled={sending || !body.trim()} className="self-end gap-1.5">
-                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
+            <div className="relative rounded-xl" {...dragHandlers}>
+                <DropOverlay show={isDragging} />
+                <div className="space-y-2">
+                    <ImageThumbnails images={images} onRemove={removeAt} onAddClick={openPicker} isFull={isFull} />
+                    <div className="flex gap-2">
+                        <Textarea
+                            rows={1}
+                            value={body}
+                            onChange={e => setBody(e.target.value)}
+                            placeholder="Responder al usuario..."
+                            className="resize-none min-h-0 h-9 py-2 text-sm"
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={openPicker}
+                            aria-label="Adjuntar imagen"
+                            className="h-9 w-9 flex-shrink-0"
+                        >
+                            <Paperclip className="w-4 h-4" />
+                        </Button>
+                        <Button onClick={handleSend} disabled={sending || !body.trim()} size="icon" className="h-9 w-9 flex-shrink-0">
+                            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        </Button>
+                    </div>
+                </div>
+                <ImageFileInput inputRef={inputRef} onFiles={addFiles} />
             </div>
         </div>
     )

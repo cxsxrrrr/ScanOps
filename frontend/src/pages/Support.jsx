@@ -14,27 +14,16 @@ import {
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { LifeBuoy, Plus, Loader2, Send, ArrowLeft, CheckCircle2, Search } from 'lucide-react'
-
-const CATEGORY_LABELS = { error: 'Error', incidencia: 'Incidencia', duda: 'Duda', otro: 'Otro' }
-const PRIORITY_LABELS = { low: 'Baja', medium: 'Media', high: 'Alta' }
-const STATUS_LABELS = { open: 'Abierto', in_progress: 'En progreso', closed: 'Cerrado' }
-// Status colors read as urgency: open (unanswered) is the most critical, closed is resolved/calm.
-const STATUS_COLOR = {
-    open: 'severity-high',
-    in_progress: 'severity-medium',
-    closed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25',
-}
-// Reuse the same severity palette used for scan findings, so criticality reads consistently app-wide.
-const PRIORITY_COLOR = {
-    low: 'severity-low',
-    medium: 'severity-medium',
-    high: 'severity-critical',
-}
-
-function formatDate(iso) {
-    return new Date(iso).toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+import {
+    LifeBuoy, Plus, Loader2, Send, ArrowLeft, CheckCircle2, Search,
+    MoreHorizontal, Paperclip, ShieldCheck, FilePlus2,
+} from 'lucide-react'
+import {
+    CATEGORY_LABELS, CATEGORY_ICONS, CATEGORY_ICON_COLOR,
+    PRIORITY_LABELS, PRIORITY_COLOR, STATUS_LABELS, STATUS_COLOR,
+    formatDate, AttachmentThumbs, useImageDropzone, DropOverlay,
+    ImageFileInput, ImageThumbnails,
+} from '../lib/supportShared.jsx'
 
 export default function Support() {
     const [tickets, setTickets] = useState([])
@@ -85,7 +74,10 @@ export default function Support() {
                     <div className="flex items-start justify-between flex-wrap gap-4">
                         <div>
                             <h1 className="text-2xl font-bold flex items-center gap-2">
-                                <LifeBuoy className="w-6 h-6 text-emerald-500" /> Soporte
+                                <span className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10">
+                                    <LifeBuoy className="w-5 h-5 text-emerald-500" />
+                                </span>
+                                Soporte
                                 {!loading && (
                                     <Badge variant="secondary" className="text-xs font-semibold">
                                         {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
@@ -120,8 +112,10 @@ export default function Support() {
                             </CardContent>
                         ) : tickets.length === 0 ? (
                             <CardContent className="py-14 text-center text-muted-foreground">
-                                <LifeBuoy className="w-10 h-10 mx-auto mb-3 opacity-25" />
-                                <p className="text-sm font-medium">Sin tickets de soporte.</p>
+                                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+                                    <LifeBuoy className="w-7 h-7 text-emerald-500" />
+                                </div>
+                                <p className="text-sm font-medium text-foreground">Sin tickets de soporte.</p>
                                 <p className="text-xs mt-1">Abre uno si tienes un error, incidencia o duda.</p>
                             </CardContent>
                         ) : filtered.length === 0 ? (
@@ -131,28 +125,34 @@ export default function Support() {
                         ) : (
                             <CardContent className="p-0">
                                 <div className="divide-y divide-border">
-                                    {filtered.map(t => (
-                                        <button
-                                            key={t.id}
-                                            onClick={() => openTicket(t.id)}
-                                            className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors text-left"
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium truncate">{t.subject}</p>
-                                                <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {CATEGORY_LABELS[t.category]} · {formatDate(t.updated_at)}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                                                <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLOR[t.priority]}`}>
-                                                    {PRIORITY_LABELS[t.priority]}
-                                                </Badge>
-                                                <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[t.status]}`}>
-                                                    {STATUS_LABELS[t.status]}
-                                                </Badge>
-                                            </div>
-                                        </button>
-                                    ))}
+                                    {filtered.map(t => {
+                                        const CategoryIcon = CATEGORY_ICONS[t.category] || MoreHorizontal
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                onClick={() => openTicket(t.id)}
+                                                className="w-full flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors text-left"
+                                            >
+                                                <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[t.category]}`}>
+                                                    <CategoryIcon className="w-4 h-4" />
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-medium truncate">{t.subject}</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                        {CATEGORY_LABELS[t.category]} · {formatDate(t.updated_at)}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                                                    <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLOR[t.priority]}`}>
+                                                        {PRIORITY_LABELS[t.priority]}
+                                                    </Badge>
+                                                    <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[t.status]}`}>
+                                                        {STATUS_LABELS[t.status]}
+                                                    </Badge>
+                                                </div>
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             </CardContent>
                         )}
@@ -174,11 +174,13 @@ function NewTicketDialog({ open, onOpenChange, onCreated }) {
     const [category, setCategory] = useState('duda')
     const [priority, setPriority] = useState('medium')
     const [body, setBody] = useState('')
+    const [images, setImages] = useState([])
     const [saving, setSaving] = useState(false)
+    const { inputRef, isDragging, dragHandlers, addFiles, removeAt, isFull, openPicker } = useImageDropzone(images, setImages)
 
     useEffect(() => {
         if (open) {
-            setSubject(''); setCategory('duda'); setPriority('medium'); setBody('')
+            setSubject(''); setCategory('duda'); setPriority('medium'); setBody(''); setImages([])
         }
     }, [open])
 
@@ -190,11 +192,20 @@ function NewTicketDialog({ open, onOpenChange, onCreated }) {
         }
         setSaving(true)
         try {
-            const res = await api.post('/support/tickets/', { subject, category, priority, body })
+            const formData = new FormData()
+            formData.append('subject', subject)
+            formData.append('category', category)
+            formData.append('priority', priority)
+            formData.append('body', body)
+            images.forEach(img => formData.append('images', img.file))
+
+            const res = await api.post('/support/tickets/', formData, {
+                headers: { 'Content-Type': undefined },
+            })
             toast.success('Ticket creado. Te responderemos pronto.')
             onCreated(res.data)
         } catch (err) {
-            toast.error('Error al crear el ticket.')
+            toast.error(err.response?.data?.detail || 'Error al crear el ticket.')
         } finally {
             setSaving(false)
         }
@@ -202,9 +213,12 @@ function NewTicketDialog({ open, onOpenChange, onCreated }) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg" {...dragHandlers}>
+                <DropOverlay show={isDragging} />
                 <DialogHeader>
-                    <DialogTitle>Nuevo Ticket de Soporte</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <LifeBuoy className="w-5 h-5 text-emerald-500" /> Nuevo Ticket de Soporte
+                    </DialogTitle>
                     <DialogDescription>
                         Cuéntanos qué pasó — un error, una incidencia o una duda.
                     </DialogDescription>
@@ -253,6 +267,26 @@ function NewTicketDialog({ open, onOpenChange, onCreated }) {
                             placeholder="Describe el problema con el mayor detalle posible..."
                         />
                     </div>
+                    <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5">
+                            <Paperclip className="w-3.5 h-3.5" /> Capturas de pantalla (opcional)
+                        </Label>
+                        {images.length === 0 ? (
+                            <button
+                                type="button"
+                                onClick={openPicker}
+                                className="w-full flex flex-col items-center gap-1 py-3 rounded-xl border-2 border-dashed border-border text-muted-foreground hover:text-emerald-500 hover:border-emerald-500/50 transition-colors"
+                            >
+                                <FilePlus2 className="w-5 h-5" />
+                                <span className="text-xs">
+                                    Arrastra, pega (Ctrl+V) o <span className="underline">selecciona</span> una imagen
+                                </span>
+                            </button>
+                        ) : (
+                            <ImageThumbnails images={images} onRemove={removeAt} onAddClick={openPicker} isFull={isFull} />
+                        )}
+                        <ImageFileInput inputRef={inputRef} onFiles={addFiles} />
+                    </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                             Cancelar
@@ -268,26 +302,58 @@ function NewTicketDialog({ open, onOpenChange, onCreated }) {
     )
 }
 
+function MessageBubble({ m }) {
+    return (
+        <div className={`flex gap-2.5 ${m.is_staff ? 'justify-start' : 'justify-end'}`}>
+            {m.is_staff && (
+                <span className="w-7 h-7 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                </span>
+            )}
+            <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                m.is_staff
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 rounded-tl-sm'
+                    : 'bg-accent border border-border rounded-tr-sm'
+            }`}>
+                <p className="whitespace-pre-wrap">{m.body}</p>
+                <AttachmentThumbs attachments={m.attachments} />
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                    {m.is_staff ? 'Soporte Vigia' : m.author_email} · {formatDate(m.created_at)}
+                </p>
+            </div>
+        </div>
+    )
+}
+
 function TicketThread({ ticket, onBack, onUpdated }) {
     const [body, setBody] = useState('')
+    const [images, setImages] = useState([])
     const [sending, setSending] = useState(false)
+    const { inputRef, isDragging, dragHandlers, addFiles, removeAt, isFull, openPicker } = useImageDropzone(images, setImages)
 
     async function handleSend() {
         if (!body.trim()) return
         setSending(true)
         try {
-            await api.post(`/support/tickets/${ticket.id}/messages/`, { body })
+            const formData = new FormData()
+            formData.append('body', body)
+            images.forEach(img => formData.append('images', img.file))
+            await api.post(`/support/tickets/${ticket.id}/messages/`, formData, {
+                headers: { 'Content-Type': undefined },
+            })
             const res = await api.get(`/support/tickets/${ticket.id}/`)
             onUpdated(res.data)
             setBody('')
+            setImages([])
         } catch (err) {
-            toast.error('Error al enviar el mensaje.')
+            toast.error(err.response?.data?.detail || 'Error al enviar el mensaje.')
         } finally {
             setSending(false)
         }
     }
 
     const isClosed = ticket.status === 'closed'
+    const CategoryIcon = CATEGORY_ICONS[ticket.category] || MoreHorizontal
 
     return (
         <div className="space-y-4">
@@ -298,11 +364,16 @@ function TicketThread({ ticket, onBack, onUpdated }) {
             <Card>
                 <CardContent className="p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <div>
-                            <h2 className="text-lg font-semibold">{ticket.subject}</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {CATEGORY_LABELS[ticket.category]} · Abierto {formatDate(ticket.created_at)}
-                            </p>
+                        <div className="flex items-start gap-3">
+                            <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[ticket.category]}`}>
+                                <CategoryIcon className="w-4 h-4" />
+                            </span>
+                            <div>
+                                <h2 className="text-lg font-semibold leading-tight">{ticket.subject}</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    {CATEGORY_LABELS[ticket.category]} · Abierto {formatDate(ticket.created_at)}
+                                </p>
+                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLOR[ticket.priority]}`}>
@@ -317,20 +388,7 @@ function TicketThread({ ticket, onBack, onUpdated }) {
             </Card>
 
             <div className="space-y-3">
-                {ticket.messages.map(m => (
-                    <div key={m.id} className={`flex ${m.is_staff ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[80%] rounded-xl p-3 text-sm ${
-                            m.is_staff
-                                ? 'bg-emerald-500/10 border border-emerald-500/20'
-                                : 'bg-accent border border-border'
-                        }`}>
-                            <p className="whitespace-pre-wrap">{m.body}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1.5">
-                                {m.is_staff ? 'Soporte Vigia' : m.author_email} · {formatDate(m.created_at)}
-                            </p>
-                        </div>
-                    </div>
-                ))}
+                {ticket.messages.map(m => <MessageBubble key={m.id} m={m} />)}
             </div>
 
             {isClosed ? (
@@ -339,17 +397,35 @@ function TicketThread({ ticket, onBack, onUpdated }) {
                 </div>
             ) : null}
 
-            <div className="flex gap-2">
-                <Textarea
-                    rows={2}
-                    value={body}
-                    onChange={e => setBody(e.target.value)}
-                    placeholder="Escribe tu respuesta..."
-                    className="resize-none"
-                />
-                <Button onClick={handleSend} disabled={sending || !body.trim()} className="self-end gap-1.5">
-                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
+            <div className="relative rounded-xl" {...dragHandlers}>
+                <DropOverlay show={isDragging} />
+                <div className="space-y-2">
+                    <ImageThumbnails images={images} onRemove={removeAt} onAddClick={openPicker} isFull={isFull} />
+                    <div className="flex gap-2">
+                        <Textarea
+                            rows={2}
+                            value={body}
+                            onChange={e => setBody(e.target.value)}
+                            placeholder="Escribe tu respuesta..."
+                            className="resize-none"
+                        />
+                        <div className="flex flex-col gap-2 self-end">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={openPicker}
+                                aria-label="Adjuntar imagen"
+                            >
+                                <Paperclip className="w-4 h-4" />
+                            </Button>
+                            <Button onClick={handleSend} disabled={sending || !body.trim()} className="gap-1.5">
+                                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+                <ImageFileInput inputRef={inputRef} onFiles={addFiles} />
             </div>
         </div>
     )
