@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, Navigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../lib/api'
@@ -129,21 +129,12 @@ function NavItem({ item, collapsed, onClick, isDark }) {
 
 export default function DashboardLayout() {
     const { user }   = useUser()
-    const navigate   = useNavigate()
     const location                = useLocation()
     const { isDark, toggleTheme } = useTheme()
     const [collapsed,  setCollapsed]  = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [profile,    setProfile]    = useState(null)
     const [profileLoading, setProfileLoading] = useState(true)
-
-    useEffect(() => {
-        const pendingInvite = sessionStorage.getItem('pendingInvite')
-        if (pendingInvite) {
-            sessionStorage.removeItem('pendingInvite')
-            navigate(`/invite/${pendingInvite}`)
-        }
-    }, [navigate])
 
     useEffect(() => {
         let cancelled = false
@@ -177,6 +168,18 @@ export default function DashboardLayout() {
         loadProfile()
         return () => { cancelled = true }
     }, [])
+
+    // Redirect synchronously (before Outlet mounts) rather than from an
+    // effect — an effect-based navigate() still lets the index route's
+    // child (Dashboard) mount and fire its own data-loading effect first,
+    // which calls GET /auth/organization/ and silently auto-creates an org
+    // for the brand-new user. That org then blocks the invite they were
+    // trying to accept ("ya perteneces a otra organizacion").
+    const pendingInvite = sessionStorage.getItem('pendingInvite')
+    if (pendingInvite && location.pathname !== `/invite/${pendingInvite}`) {
+        sessionStorage.removeItem('pendingInvite')
+        return <Navigate to={`/invite/${pendingInvite}`} replace />
+    }
 
     const currentPageName  = pageNames[location.pathname] || 'Reporte'
     const isAdmin          = profile?.role === 'admin'

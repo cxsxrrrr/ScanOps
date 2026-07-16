@@ -257,11 +257,24 @@ def accept_invitation(request, token):
             status=400,
         )
 
-    if request.user.organization and request.user.organization != org:
-        return Response(
-            {'detail': 'Ya perteneces a otra organizacion. Sal de ella primero.'},
-            status=400,
+    old_org = request.user.organization
+    if old_org and old_org != org:
+        # A brand-new account gets a placeholder org lazily auto-created the
+        # moment it hits GET /auth/organization/ (see organization_detail) —
+        # if that's all this org is (just this user, nothing registered
+        # yet), silently swap them into the invited org instead of blocking
+        # the invite on an org they never intentionally created.
+        from urls_manager.models import URLAsset
+        is_untouched_placeholder = (
+            old_org.users.count() == 1
+            and not URLAsset.objects.filter(organization=old_org).exists()
         )
+        if not is_untouched_placeholder:
+            return Response(
+                {'detail': 'Ya perteneces a otra organizacion. Sal de ella primero.'},
+                status=400,
+            )
+        old_org.delete()
 
     request.user.organization = org
     if request.data.get('first_name'):
