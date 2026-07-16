@@ -7,7 +7,7 @@ import { useTheme } from '../hooks/useTheme'
 import {
     LayoutDashboard, Globe, ScanSearch, Settings,
     ShieldCheck, Menu, X, ChevronLeft, User, Sparkles,
-    Crown, Zap, Shield, ScrollText, Sun, Moon,
+    Crown, Zap, Shield, ScrollText, Sun, Moon, LifeBuoy,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import PageTransition from '../components/PageTransition'
@@ -45,6 +45,11 @@ const NAV_ITEMS = [
         activeBg: 'linear-gradient(135deg,#475569,#64748b)', glow: '0 4px 20px rgba(100,116,139,0.35)',
     },
     {
+        to: '/support', icon: LifeBuoy, label: 'Soporte',
+        iconColor: '#34d399', hoverBg: 'rgba(16,185,129,0.12)',
+        activeBg: 'linear-gradient(135deg,#059669,#10b981)', glow: '0 4px 20px rgba(16,185,129,0.45)',
+    },
+    {
         to: '/admin', icon: ShieldCheck, label: 'Admin', adminOnly: true,
         iconColor: '#f87171', hoverBg: 'rgba(239,68,68,0.12)',
         activeBg: 'linear-gradient(135deg,#dc2626,#ef4444)', glow: '0 4px 20px rgba(239,68,68,0.45)',
@@ -58,6 +63,7 @@ const pageNames = {
     '/plans':    'Planes',
     '/profile':  'Mi Perfil',
     '/settings': 'Configuración',
+    '/support':  'Soporte',
     '/admin':    'Panel de Administración',
 }
 

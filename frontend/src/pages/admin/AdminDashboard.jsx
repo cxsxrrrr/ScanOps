@@ -15,12 +15,13 @@ import {
     ShieldCheck, Users, ScanSearch, AlertTriangle,
     Mail, Loader2, RefreshCw, XCircle, Building,
     Crown, Zap, Shield, Check, BarChart3, CheckCircle2,
-    Clock, Activity, Search, ChevronLeft, ChevronRight,
+    Clock, Activity, Search, ChevronLeft, ChevronRight, LifeBuoy,
 } from 'lucide-react'
 
 import { EditOrgModal } from './EditOrgModal'
 import { EditUserModal } from './EditUserModal'
 import { OrgAnalyticsModal } from './OrgAnalyticsModal'
+import { AdminSupportPanel } from './AdminSupportPanel'
 
 const planConfig = {
     free:     { icon: Shield,  label: 'Free',     gradient: 'from-gray-500 to-gray-600',    badge: 'plan-badge-free' },
@@ -154,6 +155,9 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="errors"    className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
                         <AlertTriangle className="w-4 h-4" /> Errores
+                    </TabsTrigger>
+                    <TabsTrigger value="support"   className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
+                        <LifeBuoy className="w-4 h-4" /> Soporte
                     </TabsTrigger>
                 </TabsList>
 
@@ -479,9 +483,14 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+
+                {/* Support */}
+                <TabsContent value="support" className="mt-4">
+                    <AdminSupportPanel />
+                </TabsContent>
             </Tabs>
-            
-            <EditOrgModal 
+
+            <EditOrgModal
                 org={editingOrg} 
                 open={!!editingOrg} 
                 onOpenChange={(v) => !v && setEditingOrg(null)} 

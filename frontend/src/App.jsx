@@ -20,6 +20,7 @@ const Plans = lazy(() => import('./pages/Plans'))
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
 const PaymentCancel = lazy(() => import('./pages/PaymentCancel'))
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const Support = lazy(() => import('./pages/Support'))
 
 function RouteFallback() {
     return (
@@ -64,6 +65,9 @@ function AuthenticatedApp() {
                         } />
                         <Route path="profile" element={<Profile />} />
                         <Route path="settings" element={<Settings />} />
+                        <Route path="support" element={
+                            <Suspense fallback={<RouteFallback />}><Support /></Suspense>
+                        } />
                         <Route path="admin" element={
                             <Suspense fallback={<RouteFallback />}><AdminDashboard /></Suspense>
                         } />

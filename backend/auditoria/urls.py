@@ -19,4 +19,5 @@ urlpatterns = [
     path('api/reports/', include('reports.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/admin/', include('administration.urls')),
+    path('api/support/', include('support.urls')),
 ]
