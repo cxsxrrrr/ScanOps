@@ -97,3 +97,31 @@ class TicketAttachment(models.Model):
 
     def __str__(self):
         return f"Attachment on message #{self.message_id}"
+
+
+class TicketRead(models.Model):
+    """Tracks when a user last viewed a ticket's thread.
+
+    Drives the unread-message badge: a ticket is "unread" for a user when
+    the other side has posted messages after this timestamp. Viewing the
+    ticket detail bumps it to now, so polling while a thread is open keeps
+    it read as new replies come in.
+    """
+
+    ticket = models.ForeignKey(
+        SupportTicket,
+        on_delete=models.CASCADE,
+        related_name='reads',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='ticket_reads',
+    )
+    last_read_at = models.DateTimeField()
+
+    class Meta:
+        unique_together = [('ticket', 'user')]
+
+    def __str__(self):
+        return f"Ticket #{self.ticket_id} read by user #{self.user_id} at {self.last_read_at}"

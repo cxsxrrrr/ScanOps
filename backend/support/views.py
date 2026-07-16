@@ -10,7 +10,8 @@ from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from .models import SupportTicket, TicketMessage, TicketAttachment
+from django.utils import timezone
+from .models import SupportTicket, TicketMessage, TicketAttachment, TicketRead
 from .serializers import (
     SupportTicketListSerializer,
     SupportTicketDetailSerializer,
@@ -126,6 +127,12 @@ def ticket_detail(request, pk):
         return Response({'detail': 'Ticket not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
+        # Viewing the thread marks it read — new replies from the other
+        # side after this point are what shows up as "unread" again.
+        TicketRead.objects.update_or_create(
+            ticket=ticket, user=request.user,
+            defaults={'last_read_at': timezone.now()},
+        )
         return Response(SupportTicketDetailSerializer(ticket, context={'request': request}).data)
 
     # PATCH — only the platform admin can change status/priority
@@ -137,7 +144,6 @@ def ticket_detail(request, pk):
     for field, value in updates.items():
         setattr(ticket, field, value)
     if updates.get('status') == 'closed' and not ticket.closed_at:
-        from django.utils import timezone
         ticket.closed_at = timezone.now()
     elif updates.get('status') and updates['status'] != 'closed':
         ticket.closed_at = None
