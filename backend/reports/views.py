@@ -55,7 +55,7 @@ BRAND_SUBTITLE_FONT = Font(size=9, italic=True, color='FF64748B')
 ZEBRA_FILL = PatternFill(start_color='FFF8FAFC', end_color='FFF8FAFC', fill_type='solid')
 
 
-def _setup_sheet_header(ws, title, subtitle=None, col_span=2, logo_scale=0.22):
+def _setup_sheet_header(ws, title, subtitle=None, col_span=2, logo_scale=0.45):
     """Insert the brand logo + a title banner row at the top of a sheet.
 
     Row 1 is reserved for the logo image (tall, no cell values so it never
@@ -73,7 +73,7 @@ def _setup_sheet_header(ws, title, subtitle=None, col_span=2, logo_scale=0.22):
             ws.add_image(img, "A1")
         except Exception:
             pass
-    ws.row_dimensions[1].height = 34
+    ws.row_dimensions[1].height = 46
 
     last_col = get_column_letter(max(col_span, 1))
     ws.merge_cells(f'A2:{last_col}2')
