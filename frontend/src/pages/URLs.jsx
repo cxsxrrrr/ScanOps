@@ -125,7 +125,9 @@ export default function URLs() {
         setScanningId(urlAssetId)
         try {
             await api.post('/scans/trigger/', { url_asset_id: urlAssetId })
-            toast.success('Escaneo iniciado exitosamente.')
+            toast.success('Escaneo iniciado exitosamente.', {
+                description: 'Puede tardar unos minutos. Te avisaremos cuando termine.',
+            })
             loadData()
         } catch (err) {
             const msg = err.response?.data?.detail || 'Error al iniciar escaneo.'
