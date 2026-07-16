@@ -5,23 +5,26 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { LifeBuoy, Loader2, ArrowLeft, Send } from 'lucide-react'
+import { LifeBuoy, Loader2, ArrowLeft, Send, Search } from 'lucide-react'
 
 const CATEGORY_LABELS = { error: 'Error', incidencia: 'Incidencia', duda: 'Duda', otro: 'Otro' }
 const PRIORITY_LABELS = { low: 'Baja', medium: 'Media', high: 'Alta' }
 const STATUS_LABELS = { open: 'Abierto', in_progress: 'En progreso', closed: 'Cerrado' }
+// Status colors read as urgency: open (unanswered) is the most critical, closed is resolved/calm.
 const STATUS_COLOR = {
-    open: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
-    in_progress: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-    closed: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
+    open: 'severity-high',
+    in_progress: 'severity-medium',
+    closed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25',
 }
+// Reuse the same severity palette used for scan findings, so criticality reads consistently app-wide.
 const PRIORITY_COLOR = {
-    low: 'bg-slate-500/15 text-slate-500 border-slate-500/30',
-    medium: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-    high: 'bg-destructive/15 text-destructive border-destructive/30',
+    low: 'severity-low',
+    medium: 'severity-medium',
+    high: 'severity-critical',
 }
 
 function formatDate(iso) {
@@ -33,6 +36,7 @@ export function AdminSupportPanel() {
     const [loading, setLoading] = useState(true)
     const [selected, setSelected] = useState(null)
     const [statusFilter, setStatusFilter] = useState('all')
+    const [search, setSearch] = useState('')
 
     useEffect(() => { loadTickets() }, [])
 
@@ -57,7 +61,13 @@ export function AdminSupportPanel() {
         }
     }
 
-    const filtered = statusFilter === 'all' ? tickets : tickets.filter(t => t.status === statusFilter)
+    const filtered = tickets
+        .filter(t => statusFilter === 'all' || t.status === statusFilter)
+        .filter(t =>
+            t.subject.toLowerCase().includes(search.toLowerCase()) ||
+            t.created_by_email.toLowerCase().includes(search.toLowerCase()) ||
+            t.organization.toLowerCase().includes(search.toLowerCase())
+        )
 
     if (selected) {
         return (
@@ -71,19 +81,35 @@ export function AdminSupportPanel() {
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                     <LifeBuoy className="w-4 h-4 text-emerald-500" /> Tickets de Soporte
+                    {!loading && (
+                        <Badge variant="secondary" className="text-xs font-semibold">
+                            {tickets.length}
+                        </Badge>
+                    )}
                 </h3>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="open">Abierto</SelectItem>
-                        <SelectItem value="in_progress">En progreso</SelectItem>
-                        <SelectItem value="closed">Cerrado</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Buscar..."
+                            className="h-8 text-xs pl-8 w-48"
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="open">Abierto</SelectItem>
+                            <SelectItem value="in_progress">En progreso</SelectItem>
+                            <SelectItem value="closed">Cerrado</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             <Card>

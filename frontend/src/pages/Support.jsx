@@ -14,20 +14,22 @@ import {
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { LifeBuoy, Plus, Loader2, Send, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { LifeBuoy, Plus, Loader2, Send, ArrowLeft, CheckCircle2, Search } from 'lucide-react'
 
 const CATEGORY_LABELS = { error: 'Error', incidencia: 'Incidencia', duda: 'Duda', otro: 'Otro' }
 const PRIORITY_LABELS = { low: 'Baja', medium: 'Media', high: 'Alta' }
 const STATUS_LABELS = { open: 'Abierto', in_progress: 'En progreso', closed: 'Cerrado' }
+// Status colors read as urgency: open (unanswered) is the most critical, closed is resolved/calm.
 const STATUS_COLOR = {
-    open: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
-    in_progress: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-    closed: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
+    open: 'severity-high',
+    in_progress: 'severity-medium',
+    closed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25',
 }
+// Reuse the same severity palette used for scan findings, so criticality reads consistently app-wide.
 const PRIORITY_COLOR = {
-    low: 'bg-slate-500/15 text-slate-500 border-slate-500/30',
-    medium: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-    high: 'bg-destructive/15 text-destructive border-destructive/30',
+    low: 'severity-low',
+    medium: 'severity-medium',
+    high: 'severity-critical',
 }
 
 function formatDate(iso) {
@@ -39,6 +41,7 @@ export default function Support() {
     const [loading, setLoading] = useState(true)
     const [selected, setSelected] = useState(null)
     const [showNewDialog, setShowNewDialog] = useState(false)
+    const [search, setSearch] = useState('')
 
     useEffect(() => { loadTickets() }, [])
 
@@ -62,6 +65,8 @@ export default function Support() {
         }
     }
 
+    const filtered = tickets.filter(t => t.subject.toLowerCase().includes(search.toLowerCase()))
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -81,6 +86,11 @@ export default function Support() {
                         <div>
                             <h1 className="text-2xl font-bold flex items-center gap-2">
                                 <LifeBuoy className="w-6 h-6 text-emerald-500" /> Soporte
+                                {!loading && (
+                                    <Badge variant="secondary" className="text-xs font-semibold">
+                                        {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
+                                    </Badge>
+                                )}
                             </h1>
                             <p className="text-muted-foreground text-sm mt-1">
                                 Reporta errores, incidencias o dudas sobre la plataforma.
@@ -90,6 +100,18 @@ export default function Support() {
                             <Plus className="w-4 h-4" /> Nuevo Ticket
                         </Button>
                     </div>
+
+                    {tickets.length > 0 && (
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Buscar por asunto..."
+                                className="pl-9"
+                            />
+                        </div>
+                    )}
 
                     <Card>
                         {loading ? (
@@ -102,10 +124,14 @@ export default function Support() {
                                 <p className="text-sm font-medium">Sin tickets de soporte.</p>
                                 <p className="text-xs mt-1">Abre uno si tienes un error, incidencia o duda.</p>
                             </CardContent>
+                        ) : filtered.length === 0 ? (
+                            <CardContent className="py-10 text-center text-muted-foreground text-sm">
+                                Sin resultados para "{search}".
+                            </CardContent>
                         ) : (
                             <CardContent className="p-0">
                                 <div className="divide-y divide-border">
-                                    {tickets.map(t => (
+                                    {filtered.map(t => (
                                         <button
                                             key={t.id}
                                             onClick={() => openTicket(t.id)}
