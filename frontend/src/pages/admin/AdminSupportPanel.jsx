@@ -14,8 +14,11 @@ import {
     CATEGORY_LABELS, CATEGORY_ICONS, CATEGORY_ICON_COLOR,
     PRIORITY_LABELS, PRIORITY_COLOR, STATUS_LABELS, STATUS_COLOR,
     formatDate, AttachmentThumbs, useImageDropzone, DropOverlay,
-    ImageFileInput, ImageThumbnails,
+    ImageFileInput, ImageThumbnails, usePolling, UnreadBadge,
 } from '../../lib/supportShared.jsx'
+
+const LIST_POLL_MS = 10000
+const THREAD_POLL_MS = 5000
 
 export function AdminSupportPanel() {
     const [tickets, setTickets] = useState([])
@@ -26,8 +29,9 @@ export function AdminSupportPanel() {
 
     useEffect(() => { loadTickets() }, [])
 
+    // Background polling shouldn't flash the loading spinner over an
+    // already-populated list — only the very first load blocks on it.
     async function loadTickets() {
-        setLoading(true)
         try {
             const res = await api.get('/support/tickets/')
             setTickets(res.data)
@@ -37,6 +41,8 @@ export function AdminSupportPanel() {
             setLoading(false)
         }
     }
+
+    usePolling(loadTickets, LIST_POLL_MS, !selected)
 
     async function openTicket(id) {
         try {
@@ -116,10 +122,11 @@ export function AdminSupportPanel() {
                                     <button
                                         key={t.id}
                                         onClick={() => openTicket(t.id)}
-                                        className="w-full flex items-center gap-3 p-3 hover:bg-accent/50 transition-colors text-left"
+                                        className="relative w-full flex items-center gap-3 p-3 hover:bg-accent/50 transition-colors text-left"
                                     >
-                                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[t.category]}`}>
+                                        <span className={`relative w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[t.category]}`}>
                                             <CategoryIcon className="w-3.5 h-3.5" />
+                                            <UnreadBadge count={t.unread_count} />
                                         </span>
                                         <div className="min-w-0 flex-1">
                                             <p className="text-sm font-medium truncate">{t.subject}</p>
@@ -176,6 +183,15 @@ function AdminTicketThread({ ticket, onBack, onUpdated }) {
     const [updatingStatus, setUpdatingStatus] = useState(false)
     const { inputRef, isDragging, dragHandlers, addFiles, removeAt, isFull, openPicker } = useImageDropzone(images, setImages)
     const CategoryIcon = CATEGORY_ICONS[ticket.category] || MoreHorizontal
+
+    // Poll the open thread for new replies — also keeps it marked as read
+    // on the backend since the detail GET bumps last_read_at each time.
+    usePolling(async () => {
+        try {
+            const res = await api.get(`/support/tickets/${ticket.id}/`)
+            onUpdated(res.data)
+        } catch { /* transient network hiccup, retry on next tick */ }
+    }, THREAD_POLL_MS)
 
     async function handleSend() {
         if (!body.trim()) return

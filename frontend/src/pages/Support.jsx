@@ -22,8 +22,11 @@ import {
     CATEGORY_LABELS, CATEGORY_ICONS, CATEGORY_ICON_COLOR,
     PRIORITY_LABELS, PRIORITY_COLOR, STATUS_LABELS, STATUS_COLOR,
     formatDate, AttachmentThumbs, useImageDropzone, DropOverlay,
-    ImageFileInput, ImageThumbnails,
+    ImageFileInput, ImageThumbnails, usePolling, UnreadBadge,
 } from '../lib/supportShared.jsx'
+
+const LIST_POLL_MS = 10000
+const THREAD_POLL_MS = 5000
 
 export default function Support() {
     const [tickets, setTickets] = useState([])
@@ -44,6 +47,11 @@ export default function Support() {
             setLoading(false)
         }
     }
+
+    // Refresh the list periodically so new replies (and their unread
+    // badges) show up without a manual reload — paused while a thread is
+    // open, since that view polls the ticket detail instead.
+    usePolling(loadTickets, LIST_POLL_MS, !selected)
 
     async function openTicket(id) {
         try {
@@ -131,10 +139,11 @@ export default function Support() {
                                             <button
                                                 key={t.id}
                                                 onClick={() => openTicket(t.id)}
-                                                className="w-full flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors text-left"
+                                                className="relative w-full flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors text-left"
                                             >
-                                                <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[t.category]}`}>
+                                                <span className={`relative w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${CATEGORY_ICON_COLOR[t.category]}`}>
                                                     <CategoryIcon className="w-4 h-4" />
+                                                    <UnreadBadge count={t.unread_count} />
                                                 </span>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-sm font-medium truncate">{t.subject}</p>
@@ -330,6 +339,15 @@ function TicketThread({ ticket, onBack, onUpdated }) {
     const [images, setImages] = useState([])
     const [sending, setSending] = useState(false)
     const { inputRef, isDragging, dragHandlers, addFiles, removeAt, isFull, openPicker } = useImageDropzone(images, setImages)
+
+    // Poll the open thread for new replies — also keeps it marked as read
+    // on the backend since the detail GET bumps last_read_at each time.
+    usePolling(async () => {
+        try {
+            const res = await api.get(`/support/tickets/${ticket.id}/`)
+            onUpdated(res.data)
+        } catch { /* transient network hiccup, retry on next tick */ }
+    }, THREAD_POLL_MS)
 
     async function handleSend() {
         if (!body.trim()) return

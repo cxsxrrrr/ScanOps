@@ -33,6 +33,33 @@ export function formatDate(iso) {
 }
 
 /**
+ * Poll `callback` every `intervalMs` while `enabled`. The callback ref is
+ * refreshed every render (no deps) so it always sees latest props/state
+ * without tearing down and rebuilding the interval on every change —
+ * only `intervalMs`/`enabled` changes do that.
+ */
+export function usePolling(callback, intervalMs, enabled = true) {
+    const callbackRef = useRef(callback)
+    useEffect(() => { callbackRef.current = callback })
+
+    useEffect(() => {
+        if (!enabled) return
+        const id = setInterval(() => callbackRef.current(), intervalMs)
+        return () => clearInterval(id)
+    }, [intervalMs, enabled])
+}
+
+/** Small red count badge for the top-right corner of a ticket row. */
+export function UnreadBadge({ count }) {
+    if (!count) return null
+    return (
+        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow">
+            {count > 9 ? '9+' : count}
+        </span>
+    )
+}
+
+/**
  * Drag-and-drop + clipboard-paste + click-to-browse state for screenshot
  * attachments. Paste is bound on window while mounted so users don't have
  * to click into a specific box first. Spread `dragHandlers` onto whatever
