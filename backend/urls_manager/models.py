@@ -18,6 +18,30 @@ class URLAsset(models.Model):
         related_name='url_assets',
     )
     url = models.URLField(max_length=2048)
+    name = models.CharField(
+        max_length=120, blank=True, default='',
+        help_text='Optional user-facing label (e.g. "Sitio principal"). Falls back to the URL when empty.',
+    )
+    ownership_challenge_token = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    ownership_failure_reason = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    ownership_verification_method = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    ownership_status = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+    )
     last_scan_status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default='pending'
     )
@@ -26,7 +50,10 @@ class URLAsset(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
+        # -id tiebreaker: two rows created within the same timestamp tick
+        # (auto_now_add resolution, or a fast test) would otherwise sort in
+        # undefined order; id always increases with creation order.
+        ordering = ['-created_at', '-id']
         verbose_name = 'URL Asset'
         verbose_name_plural = 'URL Assets'
         unique_together = ['organization', 'url']

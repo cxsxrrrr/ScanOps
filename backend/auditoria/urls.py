@@ -1,15 +1,28 @@
 """
 URL configuration for Auditoría Web.
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from reports.views import download_report
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/docs/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('api/reports/<int:scan_id>/download/', download_report, name='report-download-direct'),
+    path('api/reports/<int:scan_id>/download', download_report, name='report-download-direct-no-slash'),
     path('api/auth/', include('accounts.urls')),
     path('api/urls/', include('urls_manager.urls')),
     path('api/scans/', include('scanner.urls')),
     path('api/reports/', include('reports.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/admin/', include('administration.urls')),
+    path('api/support/', include('support.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

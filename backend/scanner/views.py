@@ -1,4 +1,6 @@
 """Views for scanner app."""
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -10,6 +12,11 @@ from .serializers import (
     FindingSerializer, TriggerScanSerializer,
 )
 from .tasks import run_scan
+
+# Minimum time between scans of the same URL — a scan hits the real target
+# over the network, so back-to-back triggers just waste resources without
+# giving the site time to change.
+SCAN_COOLDOWN = timedelta(minutes=5)
 
 
 @api_view(['POST'])
@@ -41,12 +48,24 @@ def trigger_scan(request):
             status=status.HTTP_409_CONFLICT,
         )
 
+    last_scan = Scan.objects.filter(url_asset=url_asset).order_by('-started_at').first()
+    if last_scan and (timezone.now() - last_scan.started_at) < SCAN_COOLDOWN:
+        wait_seconds = (SCAN_COOLDOWN - (timezone.now() - last_scan.started_at)).seconds
+        wait_minutes = max(1, wait_seconds // 60 + 1)
+        return Response(
+            {'detail': f'Espera unos minutos antes de volver a escanear esta URL (intenta en ~{wait_minutes} min).'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     # Create scan record and dispatch task
     scan = Scan.objects.create(
         url_asset=url_asset,
         created_by=request.user,
     )
-    run_scan.delay(scan.pk)
+    
+    from celery import chain
+    from .tasks import process_scan_results
+    chain(run_scan.s(scan.pk), process_scan_results.s()).delay()
 
     return Response(
         ScanListSerializer(scan).data,

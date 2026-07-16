@@ -1,105 +1,106 @@
+import { useState } from 'react'
 import { SignUp } from '@clerk/clerk-react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck, ArrowLeft } from 'lucide-react'
-import { useTheme } from '../hooks/useTheme'
-
-/* ── Shared Clerk appearance tokens ── */
-const clerkAppearance = (isDark) => ({
-    elements: {
-        rootBox: 'w-full',
-        card: 'bg-transparent shadow-none p-0 w-full',
-        headerTitle: 'hidden',
-        headerSubtitle: 'hidden',
-
-        /* Social buttons */
-        socialButtonsBlockButton: isDark
-            ? 'glass border-white/20 text-foreground'
-            : 'bg-white border border-gray-200 text-gray-700 shadow-sm',
-        socialButtonsBlockButtonText: 'font-medium',
-
-        /* Primary CTA */
-        formButtonPrimary:
-            'gradient-primary border-0 shadow-lg shadow-blue-500/25',
-
-        /* Inputs */
-        formFieldInput: isDark
-            ? 'bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40'
-            : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
-
-        /* Labels */
-        formFieldLabel: isDark
-            ? 'text-foreground font-semibold'
-            : 'text-gray-700 font-semibold',
-
-        /* Divider */
-        dividerLine: isDark ? 'bg-white/10' : 'bg-gray-200',
-        dividerText: 'text-muted-foreground',
-
-        /* Footer links */
-        footerActionLink: 'text-blue-500 hover:text-blue-400 font-semibold',
-        footerActionText: isDark ? 'text-muted-foreground' : 'text-gray-500',
-
-        /* Identity preview (email step) */
-        identityPreview: isDark
-            ? 'bg-white/5 border-white/10'
-            : 'bg-gray-50 border border-gray-200',
-        identityPreviewEditButton: 'text-blue-500 hover:text-blue-400',
-
-        /* Password toggle */
-        formFieldInputShowPasswordButton: isDark
-            ? 'text-white/50 hover:text-white/80'
-            : 'text-gray-400 hover:text-gray-600',
-
-        /* Alert / error messages */
-        alert: isDark
-            ? 'bg-red-500/10 border-red-500/20 text-red-400'
-            : 'bg-red-50 border border-red-200 text-red-600',
-
-        /* Form field error */
-        formFieldErrorText: 'text-red-500 text-xs mt-1',
-    },
-})
+import { motion } from 'framer-motion'
+import { ShieldCheck, ArrowLeft, ScrollText, Check } from 'lucide-react'
 
 export default function Register() {
-    const { isDark } = useTheme()
+    const [termsAccepted, setTermsAccepted] = useState(false)
 
     return (
-        <div className="min-h-screen flex justify-center items-center gradient-bg p-6 sm:p-8 relative overflow-hidden">
-            {/* Background orbs */}
-            <div className="absolute w-72 h-72 bg-purple-500/20 rounded-full blur-3xl top-10 right-20 animate-pulse" />
-            <div className="absolute w-96 h-96 bg-blue-500/15 rounded-full blur-3xl bottom-10 left-20 animate-pulse" style={{ animationDelay: '1.5s' }} />
+        <div className="min-h-screen flex justify-center items-center gradient-bg p-8 relative overflow-hidden">
+            <div className="absolute w-72 h-72 bg-purple-500/20 rounded-full blur-3xl top-10 right-20 animate-float" />
+            <div className="absolute w-96 h-96 bg-blue-500/15 rounded-full blur-3xl bottom-10 left-20 animate-float-slow" />
+            <div className="absolute w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl top-1/2 left-1/2 -translate-x-1/2 animate-float-delayed" />
 
-            <div className="relative z-10 w-full max-w-[420px]">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="relative z-10 w-full max-w-lg"
+            >
                 <div className="text-center mb-8">
-                    <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
+                    <div className="w-14 h-14 rounded-xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
                         <ShieldCheck className="w-7 h-7 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-                        Crear Cuenta
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Crear Cuenta en Vigia
                     </h1>
-                    <p className="text-muted-foreground text-sm mt-2">
-                        Protege tus sitios web con inteligencia artificial
+                    <p className="text-muted-foreground mt-2 text-sm">
+                        Protege tus sitios web con escaneos de seguridad inteligentes
                     </p>
                 </div>
 
-                <div className="glass-strong rounded-2xl p-6 sm:p-8 login-card-enter overflow-hidden">
-                    <SignUp
-                        routing="hash"
-                        signInUrl="/login"
-                        appearance={clerkAppearance(isDark)}
-                    />
+                {/* Terms checkbox */}
+                <div className="glass-card rounded-xl p-4 mb-4">
+                    <label htmlFor="terms-checkbox" className="flex items-start gap-3 cursor-pointer">
+                        <div className="pt-0.5">
+                            <button
+                                type="button"
+                                id="terms-checkbox"
+                                role="checkbox"
+                                aria-checked={termsAccepted}
+                                onClick={() => setTermsAccepted(!termsAccepted)}
+                                className={`w-5 h-5 rounded flex items-center justify-center border transition-all duration-200 flex-shrink-0 ${
+                                    termsAccepted
+                                        ? 'gradient-primary border-transparent shadow-lg shadow-blue-500/25'
+                                        : 'border-border bg-foreground/5 hover:border-foreground/40'
+                                }`}
+                            >
+                                {termsAccepted && <Check className="w-3 h-3 text-white" />}
+                            </button>
+                        </div>
+                        <div className="text-sm">
+                            <span className="text-muted-foreground">He leído y acepto los </span>
+                            <Link
+                                to="/terms"
+                                className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                Términos y Condiciones
+                            </Link>
+                            <span className="text-muted-foreground">
+                                {' '}de uso de Vigia, incluyendo las políticas de uso responsable de la herramienta de ciberseguridad.
+                            </span>
+                        </div>
+                    </label>
+                </div>
+
+                {/* Clerk form */}
+                <div className="relative">
+                    {!termsAccepted && (
+                        <div className="absolute inset-0 z-20 rounded-2xl bg-black/40 backdrop-blur-[2px] flex items-center justify-center cursor-not-allowed">
+                            <div className="glass-strong rounded-xl px-5 py-3 flex items-center gap-3 shadow-2xl">
+                                <ScrollText className="w-5 h-5 text-amber-400" />
+                                <span className="text-sm font-medium text-foreground">
+                                    Acepta los términos para continuar
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                    <div className={`glass-strong rounded-2xl p-10 transition-opacity duration-300 ${!termsAccepted ? 'opacity-60' : ''}`}>
+                        <SignUp
+                            routing="hash"
+                            signInUrl="/login"
+                            appearance={{
+                                elements: {
+                                    rootBox: 'w-full',
+                                    card: 'bg-transparent shadow-none p-0 w-full [&>div]:space-y-4',
+                                    headerTitle: 'hidden',
+                                    headerSubtitle: 'hidden',
+                                    footer: '!mt-6 !pt-4 !border-t !border-border',
+                                },
+                            }}
+                        />
+                    </div>
                 </div>
 
                 <p className="text-center mt-6 text-sm text-muted-foreground">
-                    <Link
-                        to="/login"
-                        className="text-blue-500 hover:text-blue-400 font-semibold inline-flex items-center gap-1 transition-colors"
-                    >
+                    <Link to="/login" className="text-blue-400 hover:text-blue-300 font-medium inline-flex items-center gap-1">
                         <ArrowLeft className="w-3 h-3" /> Volver al inicio de sesión
                     </Link>
                 </p>
-            </div>
+            </motion.div>
         </div>
     )
 }
-

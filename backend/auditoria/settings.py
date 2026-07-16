@@ -23,6 +23,7 @@ INSTALLED_APPS = [
 
     # Third party
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     'django_filters',
 
@@ -33,6 +34,8 @@ INSTALLED_APPS = [
     'reports',
     'notifications',
     'administration',
+    'audit_log',
+    'support',
 ]
 
 MIDDLEWARE = [
@@ -44,6 +47,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'audit_log.middleware.APIRequestLogMiddleware',
 ]
 
 ROOT_URLCONF = 'auditoria.urls'
@@ -98,6 +102,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# --- Media (user-uploaded files, e.g. support ticket attachments) ---
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # --- Default Primary Key ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -116,11 +124,23 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Keep query param "format" available for app logic (report export format)
+    # instead of DRF renderer selection.
+    'URL_FORMAT_OVERRIDE': None,
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Vigia API',
+    'DESCRIPTION': 'Documentacion automatica del backend Vigia.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 # --- CORS ---
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 CORS_ALLOWED_ORIGINS = [
-    config('FRONTEND_URL', default='http://localhost:5173'),
+    FRONTEND_URL,
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -145,14 +165,22 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'notifications.tasks.send_scheduled_reports',
         'schedule': 3600.0,  # Check every hour
     },
+    'cleanup-expired-invitations': {
+        'task': 'accounts.tasks.cleanup_expired_invitations',
+        'schedule': 86400.0,  # Once a day
+    },
 }
 
 # --- Google Gemini ---
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
-# --- SendGrid ---
-SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
-SENDGRID_FROM_EMAIL = config('SENDGRID_FROM_EMAIL', default='noreply@auditoria.com')
+# --- Resend ---
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
+RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='Vigia <onboarding@resend.dev>')
+
+# --- Stripe ---
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
 # --- Scan Engine Config ---
 SCAN_TIMEOUT = 30  # seconds per check

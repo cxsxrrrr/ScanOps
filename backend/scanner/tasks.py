@@ -48,8 +48,9 @@ def run_scan(self, scan_id):
 
         # Update URL asset status
         url_asset = scan.url_asset
+        critical_count = scan.findings.filter(severity='CRITICAL').count()
         high_count = scan.findings.filter(severity='HIGH').count()
-        if high_count > 0:
+        if critical_count > 0 or high_count > 0:
             url_asset.last_scan_status = 'warning'
         else:
             url_asset.last_scan_status = 'ok'
@@ -58,14 +59,7 @@ def run_scan(self, scan_id):
 
         logger.info(f"Scan #{scan_id} completed: {len(findings)} findings")
 
-        # Trigger report generation
-        from reports.tasks import generate_ai_summary
-        generate_ai_summary.delay(scan_id)
-
-        # Check for high-severity alerts
-        if high_count > 0:
-            from notifications.tasks import send_high_severity_alert
-            send_high_severity_alert.delay(scan_id)
+        return scan_id
 
     except Exception as e:
         logger.exception(f"Scan #{scan_id} failed: {e}")
@@ -78,4 +72,33 @@ def run_scan(self, scan_id):
         scan.url_asset.last_scan_status = 'error'
         scan.url_asset.save(update_fields=['last_scan_status'])
 
-        raise self.retry(exc=e)
+        return scan_id
+
+
+@shared_task
+def process_scan_results(scan_id):
+    """Process results after a scan completes (AI summary and alerts)."""
+    from .models import Scan
+    try:
+        scan = Scan.objects.get(pk=scan_id)
+    except Scan.DoesNotExist:
+        return scan_id
+        
+    if scan.status != 'completed':
+        return scan_id
+
+    # Trigger report generation
+    from reports.tasks import generate_ai_summary
+    # We call it synchronously here if we want it to block the chain, 
+    # but generate_ai_summary is already a celery task. 
+    # To wait for it in a chain, we just call it directly since we are in a worker!
+    generate_ai_summary(scan_id)
+
+    # Check for high-severity alerts
+    critical_count = scan.findings.filter(severity='CRITICAL').count()
+    high_count = scan.findings.filter(severity='HIGH').count()
+    if critical_count > 0 or high_count > 0:
+        from notifications.tasks import send_high_severity_alert
+        send_high_severity_alert.delay(scan_id)
+        
+    return scan_id

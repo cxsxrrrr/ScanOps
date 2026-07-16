@@ -3,465 +3,288 @@
 @tailwind utilities;
 
 @layer base {
-
-  /* ─── LIGHT MODE (default) ─── */
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    color-scheme: light;
+    /* Light mode — clean SaaS minimal (Linear / Notion style) */
+    --background: 220 16% 95%;        /* cool off-white — cards float above this */
+    --foreground: 220 43% 11%;        /* near-black — max heading contrast */
+    --card: 0 0% 100%;                /* pure white cards */
+    --card-foreground: 220 43% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 217 91% 60%;
+    --popover-foreground: 220 43% 11%;
+    --primary: 221 83% 53%;           /* clean cobalt blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%;
+    --secondary: 220 14% 91%;
+    --secondary-foreground: 220 43% 11%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 13% 40%;  /* slate-500 equivalent — readable labels */
+    --accent: 220 14% 90%;            /* visible hover on white cards */
+    --accent-foreground: 220 43% 11%;
+    --destructive: 0 84% 56%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --border: 220 13% 88%;            /* soft but clear card edges */
+    --input: 220 13% 88%;
+    --ring: 221 83% 53%;
     --radius: 0.75rem;
+    /* Plan */
+    --plan-free: 220 9% 38%;
+    --plan-pro: 258 90% 60%;
+    --plan-ultimate: 37 100% 48%;
+    /* Glass (light) */
+    --glass-bg: 0 0% 100%;
+    --glass-bg-alpha: 0.95;
+    --glass-border-alpha: 0.14;
+    --glass-shadow: 220 15% 50%;
+    /* Sidebar */
+    --sidebar-bg: 0 0% 100%;
+    --sidebar-border: 220 13% 90%;
   }
 
-  /* ─── DARK MODE ─── */
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 96%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 96%;
+    color-scheme: dark;
+    /* Dark mode — deep navy, refined glassmorphism */
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    --card: 222 50% 7%;
+    --card-foreground: 213 31% 91%;
+    --popover: 222 50% 8%;
+    --popover-foreground: 213 31% 91%;
     --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 4%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 96%;
+    --primary-foreground: 224 71% 4%;
+    --secondary: 217 33% 13%;
+    --secondary-foreground: 213 31% 91%;
+    --muted: 217 33% 11%;
+    --muted-foreground: 215 20% 52%;
+    --accent: 217 33% 14%;
+    --accent-foreground: 213 31% 91%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    --border: 217 33% 13%;
+    --input: 217 33% 13%;
     --ring: 217 91% 60%;
+    /* Plan */
+    --plan-free: 215 20% 55%;
+    --plan-pro: 258 90% 66%;
+    --plan-ultimate: 37 100% 55%;
+    /* Glass (dark) */
+    --glass-bg: 222 50% 8%;
+    --glass-bg-alpha: 0.6;
+    --glass-border-alpha: 0.08;
+    --glass-shadow: 0 0% 0%;
+    /* Sidebar */
+    --sidebar-bg: 222 50% 6%;
+    --sidebar-border: 217 33% 12%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
+  * { @apply border-border; }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground font-['Inter',sans-serif] antialiased;
     scroll-behavior: smooth;
   }
-
-  /* Dark select/option styling */
-  .dark select option {
-    background-color: hsl(222 47% 9%);
-    color: hsl(210 40% 96%);
+  select option {
+    background-color: hsl(var(--card));
+    color: hsl(var(--foreground));
   }
-
-  /* Consistent focus rings for all interactive elements */
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible,
   button:focus-visible {
-    outline: 2px solid hsl(217 91% 60%);
+    outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+  /* Native date/month inputs — adapt picker to theme.
+     "color-scheme: light dark" lets the *OS* decide which icon variant to
+     paint, independent of our app's manual .dark toggle — when the OS is
+     in light mode but the app is toggled to dark, that renders the black
+     (light-scheme) calendar icon on a dark input, i.e. invisible. Force it
+     to follow the app's own theme class instead of the OS preference. */
+  input[type="date"],
+  input[type="month"] {
+    accent-color: hsl(var(--primary));
+    color-scheme: light;
+  }
+  .dark input[type="date"],
+  .dark input[type="month"] {
+    color-scheme: dark;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.75;
+    padding: 4px;
+    border-radius: 6px;
+    transition: opacity 0.15s, background-color 0.15s;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="month"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    background-color: hsl(var(--primary) / 0.15);
   }
 }
 
-/* Glassmorphism utilities */
+/* ─── Glassmorphism ─────────────────────────────────────────── */
 @layer utilities {
   .glass {
-    @apply bg-white/80 backdrop-blur-xl border border-gray-200;
+    @apply backdrop-blur-xl border border-border;
+    background: hsl(var(--glass-bg) / var(--glass-bg-alpha));
   }
-
-  .dark .glass {
-    @apply bg-white/5 border-white/10;
-  }
-
   .glass-strong {
-    @apply bg-white/90 backdrop-blur-2xl border border-gray-200;
+    @apply backdrop-blur-2xl border border-border;
+    background: hsl(var(--glass-bg) / 0.92);
   }
-
   .dark .glass-strong {
-    @apply bg-white/10 border-white/15;
+    background: hsl(var(--glass-bg) / 0.75);
+  }
+  .glass-card {
+    @apply backdrop-blur-xl border border-border;
+    background: hsl(var(--card));
+    box-shadow:
+      0 1px 2px hsl(var(--glass-shadow) / 0.06),
+      0 4px 16px hsl(var(--glass-shadow) / 0.08);
+  }
+  .dark .glass-card {
+    box-shadow:
+      0 1px 3px hsl(0 0% 0% / 0.3),
+      0 8px 24px hsl(0 0% 0% / 0.2);
   }
 
-  /* Gradient backgrounds */
+  /* ─── Gradients ─────────────────────────────────────────────── */
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(262 83% 58%) 100%);
+    background: linear-gradient(135deg, hsl(217 91% 55%) 0%, hsl(262 83% 58%) 100%);
   }
-
+  .gradient-pro {
+    background: linear-gradient(135deg, hsl(258 90% 66%) 0%, hsl(280 90% 55%) 100%);
+  }
+  .gradient-ultimate {
+    background: linear-gradient(135deg, hsl(37 100% 55%) 0%, hsl(25 95% 53%) 100%);
+  }
   .gradient-bg {
-    background-color: hsl(var(--background));
-    background-image:
-      radial-gradient(ellipse at 20% 50%, rgba(42, 136, 255, 0.04) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(124, 58, 237, 0.03) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.02) 0%, transparent 50%);
+    background: hsl(var(--background));
   }
-
   .dark .gradient-bg {
-    background-image:
-      radial-gradient(ellipse at 20% 50%, rgba(42, 136, 255, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(124, 58, 237, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.04) 0%, transparent 50%);
+    background:
+      radial-gradient(ellipse at 20% 50%, hsl(217 91% 60% / 0.07) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(262 83% 58% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, hsl(195 90% 50% / 0.04) 0%, transparent 50%),
+      hsl(var(--background));
   }
 
-  /* Severity badges */
-  .severity-high {
-    @apply bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30;
+  /* ─── Sidebar ────────────────────────────────────────────────── */
+  .sidebar-bg {
+    background: hsl(var(--sidebar-bg));
+    border-right: 1px solid hsl(var(--sidebar-border));
   }
 
-  .severity-medium {
-    @apply bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30;
+  /* ─── Plan badges ────────────────────────────────────────────── */
+  .plan-badge-free     { @apply bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/25 text-xs font-semibold; }
+  .plan-badge-pro      { @apply bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/25 text-xs font-semibold; }
+  .plan-badge-ultimate { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold; }
+
+  /* ─── Role badges ────────────────────────────────────────────── */
+  .role-badge-admin     { @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-xs font-semibold; }
+  .role-badge-org_admin { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold; }
+  .role-badge-user      { @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 text-xs font-semibold; }
+
+  /* ─── Severity badges ────────────────────────────────────────── */
+  .severity-critical { @apply bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-500/25; }
+  .severity-high     { @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25; }
+  .severity-medium   { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25; }
+  .severity-low      { @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25; }
+  .severity-info     { @apply bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/25; }
+
+  /* ─── Progress bar ───────────────────────────────────────────── */
+  .progress-bar-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+    background: linear-gradient(90deg, hsl(217 91% 55%) 0%, hsl(262 83% 58%) 100%);
   }
 
-  .severity-low {
-    @apply bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30;
-  }
-
-  .severity-info {
-    @apply bg-gray-500/15 text-gray-600 dark:text-gray-400 border border-gray-500/30;
-  }
-
-  /* Scan animation */
-  .scan-pulse {
-    animation: scan-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  @keyframes scan-pulse {
-
-    0%,
-    100% {
-      opacity: 0.4;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-  }
-
-  /* Loading skeleton shimmer */
+  /* ─── Skeleton shimmer ───────────────────────────────────────── */
   .skeleton {
     @apply rounded-lg;
-    background: linear-gradient(90deg, hsl(210 20% 93%) 25%, hsl(210 20% 88%) 50%, hsl(210 20% 93%) 75%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted) / 0.5) 50%,
+      hsl(var(--muted)) 75%
+    );
     background-size: 200% 100%;
-    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    animation: skeleton-shimmer 1.8s ease-in-out infinite;
   }
-
-  .dark .skeleton {
-    background: linear-gradient(90deg, hsl(217 33% 14%) 25%, hsl(217 33% 18%) 50%, hsl(217 33% 14%) 75%);
-    background-size: 200% 100%;
-  }
-
   @keyframes skeleton-shimmer {
-    0% {
-      background-position: 200% 0;
-    }
-
-    100% {
-      background-position: -200% 0;
-    }
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 
-  /* Tooltip for collapsed sidebar */
+  /* ─── Sidebar tooltip (collapsed state) ─────────────────────── */
   .sidebar-tooltip {
-    @apply absolute left-full ml-2 px-2.5 py-1 rounded-md text-xs font-medium;
-    @apply bg-gray-800 text-white dark:bg-white/10 dark:backdrop-blur-xl dark:border dark:border-white/10 dark:text-foreground;
-    @apply opacity-0 invisible pointer-events-none;
-    @apply transition-all duration-200;
+    @apply absolute left-full ml-3 px-3 py-1.5 rounded-lg text-xs font-medium z-50;
+    @apply bg-popover backdrop-blur-xl border border-border text-foreground shadow-lg;
+    @apply opacity-0 invisible pointer-events-none transition-all duration-150;
     white-space: nowrap;
-    z-index: 100;
   }
+  .sidebar-item:hover .sidebar-tooltip { @apply opacity-100 visible; }
 
-  .sidebar-item:hover .sidebar-tooltip {
-    @apply opacity-100 visible;
-  }
-
-  /* Page transition */
+  /* ─── Page enter animation ───────────────────────────────────── */
   .page-enter {
-    animation: page-enter 0.4s ease-out;
+    animation: page-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
-
   @keyframes page-enter {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Empty state illustration glow */
-  .empty-state-icon {
-    filter: drop-shadow(0 0 20px rgba(42, 136, 255, 0.15));
+  /* ─── Float animations (login bg) ───────────────────────────── */
+  .animate-float         { animation: float 7s ease-in-out infinite; }
+  .animate-float-slow    { animation: float 9s ease-in-out infinite; }
+  .animate-float-delayed { animation: float 7s ease-in-out 2.5s infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-22px); }
   }
 
-  /* Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+  /* ─── Gradient text animation ────────────────────────────────── */
+  .animate-gradient-text {
+    background-size: 200% auto;
+    animation: gradient-shift 5s linear infinite;
+  }
+  @keyframes gradient-shift {
+    0%   { background-position: 0% center; }
+    100% { background-position: 200% center; }
   }
 
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-transparent;
+  /* ─── Pulse glow ─────────────────────────────────────────────── */
+  .animate-pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 8px hsl(217 91% 60% / 0.3); }
+    50%       { box-shadow: 0 0 28px hsl(217 91% 60% / 0.65); }
   }
 
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-white/10 rounded-full;
-  }
+  /* ─── Stagger entrance ───────────────────────────────────────── */
+  .stagger-1 { animation-delay: 0.04s; }
+  .stagger-2 { animation-delay: 0.08s; }
+  .stagger-3 { animation-delay: 0.12s; }
+  .stagger-4 { animation-delay: 0.16s; }
 
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-white/20;
-  }
+  /* ─── Glow cards ─────────────────────────────────────────────── */
+  .glow-blue   { box-shadow: 0 0 28px hsl(217 91% 60% / 0.12), 0 0 56px hsl(217 91% 60% / 0.05); }
+  .glow-purple { box-shadow: 0 0 28px hsl(262 83% 58% / 0.12), 0 0 56px hsl(262 83% 58% / 0.05); }
+  .glow-amber  { box-shadow: 0 0 28px hsl(37 100% 55% / 0.12),  0 0 56px hsl(37 100% 55% / 0.05); }
 
-  /* ─── Theme-aware utility overrides ─── */
-  /* Inputs */
-  .theme-input {
-    @apply bg-gray-100 border-gray-200 text-foreground placeholder:text-muted-foreground;
-  }
+  /* ─── Empty state icon ───────────────────────────────────────── */
+  .empty-state-icon { filter: drop-shadow(0 0 18px hsl(var(--primary) / 0.12)); }
 
-  .dark .theme-input {
-    @apply bg-white/5 border-white/10;
-  }
+  /* ─── Scrollbar ──────────────────────────────────────────────── */
+  .custom-scrollbar::-webkit-scrollbar       { width: 5px; }
+  .custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-foreground/10 rounded-full; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { @apply bg-foreground/20; }
 
-  /* Hover surfaces */
-  .theme-hover:hover {
-    @apply bg-gray-100;
-  }
-
-  .dark .theme-hover:hover {
-    @apply bg-white/5;
-  }
-
-  /* Subtle backgrounds */
-  .theme-surface {
-    @apply bg-gray-100;
-  }
-
-  .dark .theme-surface {
-    @apply bg-white/5;
-  }
-
-  /* Dividers */
-  .theme-divide>*+* {
-    @apply border-t border-gray-200;
-  }
-
-  .dark .theme-divide>*+* {
-    @apply border-white/5;
-  }
-
-  /* Toggle switch off-state */
-  .theme-toggle-off {
-    @apply bg-gray-300;
-  }
-
-  .dark .theme-toggle-off {
-    @apply bg-white/20;
-  }
-
-  /* ─── Clerk component overrides ─── */
-
-  /* Force ALL Clerk internal backgrounds transparent in dark mode */
-  .dark .cl-card,
-  .dark .cl-footer,
-  .dark .cl-footerAction,
-  .dark .cl-internal,
-  .dark .cl-signIn-root,
-  .dark .cl-signUp-root,
-  .dark .cl-headerTitle,
-  .dark .cl-headerSubtitle,
-  .dark .cl-socialButtonsProviderIcon__apple {
-    background-color: transparent !important;
-    background: transparent !important;
-  }
-
-  /* Clerk footer branding ("Secured by Clerk" badge) */
-  .dark .cl-footerPages,
-  .dark .cl-footer .cl-internal,
-  .dark [data-clerk-component] .cl-internal {
-    background-color: transparent !important;
-    background: transparent !important;
-    color: hsl(215 20% 55%) !important;
-  }
-
-  /* Clerk powered-by / dev-mode badge */
-  .dark .cl-badge {
-    background-color: transparent !important;
-    background: transparent !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    color: hsl(215 20% 55%) !important;
-  }
-
-  /* Make Clerk's footer text legible in dark mode */
-  .dark .cl-footerActionText {
-    color: hsl(215 20% 55%) !important;
-  }
-
-  .dark .cl-footerActionLink {
-    color: hsl(217 91% 60%) !important;
-  }
-
-  /* Also fix any stray Clerk wrapper divs with white bg */
-  .dark .cl-rootBox,
-  .dark .cl-card>div {
-    background-color: transparent !important;
-  }
-
-  /* Force Clerk elements to respect container bounds */
-  .cl-rootBox,
-  .cl-card,
-  .cl-card>div,
-  .cl-main,
-  .cl-form,
-  .cl-formFieldRow,
-  .cl-socialButtons,
-  .cl-socialButtonsBlockButton,
-  .cl-formButtonPrimary,
-  .cl-formFieldInput,
-  .cl-footer,
-  .cl-footerAction {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Card container spacing */
-  .cl-card .cl-main {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  /* Form field rows — consistent spacing */
-  .cl-formFieldRow {
-    margin-bottom: 0.5rem;
-  }
-
-  /* Labels — refined typography */
-  .cl-formFieldLabel {
-    font-size: 0.8125rem !important;
-    letter-spacing: 0.01em;
-    margin-bottom: 0.375rem !important;
-  }
-
-  /* Inputs — consistent height & smooth transitions */
-  .cl-formFieldInput {
-    height: 2.75rem !important;
-    border-radius: 0.625rem !important;
-    font-size: 0.875rem !important;
-    transition: all 0.2s ease !important;
-  }
-
-  .cl-formFieldInput:focus {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
-  }
-
-  /* Primary button — elevated + hover animation */
-  .cl-formButtonPrimary {
-    height: 2.75rem !important;
-    border-radius: 0.625rem !important;
-    font-size: 0.875rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.025em !important;
-    transition: all 0.25s ease !important;
-  }
-
-  .cl-formButtonPrimary:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3) !important;
-  }
-
-  .cl-formButtonPrimary:active {
-    transform: translateY(0) !important;
-  }
-
-  /* Social buttons — hover micro-animation */
-  .cl-socialButtonsBlockButton {
-    height: 2.75rem !important;
-    border-radius: 0.625rem !important;
-    font-size: 0.875rem !important;
-    font-weight: 500 !important;
-    transition: all 0.2s ease !important;
-  }
-
-  .cl-socialButtonsBlockButton:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-  }
-
-  .dark .cl-socialButtonsBlockButton:hover {
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.06) !important;
-  }
-
-  .cl-socialButtonsBlockButton:active {
-    transform: translateY(0) !important;
-  }
-
-  /* Divider refinement */
-  .cl-dividerLine {
-    height: 1px;
-  }
-
-  .cl-dividerText {
-    font-size: 0.75rem !important;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  /* Footer — cleaner typography */
-  .cl-footerAction {
-    margin-top: 0.5rem;
-  }
-
-  .cl-footerActionText {
-    font-size: 0.8125rem !important;
-  }
-
-  .cl-footerActionLink {
-    font-weight: 600 !important;
-  }
-
-  /* OTP / verification input */
-  .cl-otpCodeFieldInput {
-    border-radius: 0.5rem !important;
-    transition: all 0.2s ease !important;
-  }
-
-  /* Identity preview (email step) */
-  .cl-identityPreview {
-    border-radius: 0.625rem !important;
-  }
-
-  /* Login card entrance animation */
-  .login-card-enter {
-    animation: login-card-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  @keyframes login-card-enter {
-    from {
-      opacity: 0;
-      transform: translateY(16px) scale(0.98);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+  /* ─── Scan animation ─────────────────────────────────────────── */
+  .scan-pulse { animation: scan-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  @keyframes scan-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50%       { opacity: 1;   transform: scale(1.04); }
   }
 }

@@ -41,3 +41,7 @@ desktop.ini
 
 # Gemini agent
 .gemini/
+stripe.exe
+
+# Playwright MCP test artifacts (screenshots, console logs, downloaded files)
+.playwright-mcp/
