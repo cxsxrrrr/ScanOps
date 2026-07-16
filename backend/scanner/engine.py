@@ -21,6 +21,7 @@ from scanner.checks import ALL_CHECKS
 from scanner.checks.subdomain_enum import discover_subdomains
 from scanner.checks.wordpress import check_wordpress
 from scanner.checks.tech_fingerprint import check_technologies
+from scanner.checks.active_probes import run_active_probes
 
 logger = logging.getLogger('scanner')
 
@@ -42,6 +43,15 @@ HREF_PATTERN = re.compile(
     r'<a\s[^>]*href\s*=\s*["\']([^"\'#]+)["\']',
     re.IGNORECASE,
 )
+
+# Cipher suite names considered weak/broken (matched against ssock.cipher()[0])
+WEAK_CIPHER_PATTERN = re.compile(
+    r'RC4|DES|3DES|MD5|NULL|EXPORT|_CBC3_',
+    re.IGNORECASE,
+)
+
+# Common DKIM selectors to probe when no explicit selector is known
+DKIM_COMMON_SELECTORS = ['default', 'google', 'selector1', 'selector2', 'k1', 'mail', 'dkim']
 
 
 class ScanEngine:
@@ -80,6 +90,7 @@ class ScanEngine:
                 self._check_ssl(self.parsed_url.hostname)
 
             self._check_dns_records(self.parsed_url.hostname)
+            self._check_zone_transfer(self.parsed_url.hostname)
 
             # Extended checks on the main page
             self._run_extended_checks(response, self.parsed_url)
@@ -87,6 +98,12 @@ class ScanEngine:
             # WordPress-specific checks
             base_url = f'{self.parsed_url.scheme}://{self.parsed_url.netloc}'
             check_wordpress(response, self._session, base_url, self.findings)
+
+            # Active probes: extra safe, read-only requests against
+            # well-known paths (admin panels, backups, actuator, etc.)
+            # and canary payloads (open redirect, reflected XSS, path
+            # traversal, CRLF injection).
+            run_active_probes(self._session, base_url, self.findings)
 
             # Crawl same-origin pages and run extended checks on each
             self._crawl_and_check(response)
@@ -356,6 +373,28 @@ class ScanEngine:
                             'evidence': f'Protocol: {protocol}',
                         })
 
+                    # Check negotiated cipher suite strength
+                    cipher = ssock.cipher()
+                    if cipher:
+                        cipher_name = cipher[0]
+                        if WEAK_CIPHER_PATTERN.search(cipher_name):
+                            self.findings.append({
+                                'title': 'Weak TLS Cipher Suite',
+                                'severity': 'HIGH',
+                                'category': 'ssl',
+                                'description': (
+                                    f'Server negotiated a weak cipher suite: {cipher_name}. '
+                                    'This cipher is considered cryptographically broken '
+                                    'or too weak for modern use.'
+                                ),
+                                'recommendation': (
+                                    'Disable RC4, DES/3DES, MD5, NULL, and export-grade '
+                                    'ciphers. Use only modern AEAD ciphers (AES-GCM, '
+                                    'ChaCha20-Poly1305).'
+                                ),
+                                'evidence': f'Negotiated cipher: {cipher_name}',
+                            })
+
         except Exception as e:
             logger.warning(f"SSL check error for {hostname}: {e}")
 
@@ -371,43 +410,182 @@ class ScanEngine:
                 'evidence': 'HTTP references found in page source.',
             })
 
+    def _nslookup(self, record_type, name):
+        """Run nslookup for a record type/name, returning stdout (or '' on failure)."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ['nslookup', f'-type={record_type}', name],
+                capture_output=True, text=True, timeout=10,
+            )
+            return result.stdout
+        except Exception as e:
+            logger.warning(f"nslookup {record_type} {name} failed: {e}")
+            return ''
+
     def _check_dns_records(self, hostname):
-        """Check DNS security records (SPF, DMARC)."""
+        """Check DNS security records: SPF, DMARC, CAA, DKIM, DNSSEC, MTA-STS, TLS-RPT."""
+        if not hostname:
+            return
+
+        if 'v=spf1' not in self._nslookup('txt', hostname):
+            self.findings.append({
+                'title': 'Missing SPF Record',
+                'severity': 'MEDIUM',
+                'category': 'dns',
+                'description': 'No SPF record found. Email spoofing may be possible.',
+                'recommendation': 'Add an SPF TXT record to the DNS configuration.',
+                'evidence': 'No v=spf1 record found.',
+            })
+
+        if 'v=DMARC1' not in self._nslookup('txt', f'_dmarc.{hostname}'):
+            self.findings.append({
+                'title': 'Missing DMARC Record',
+                'severity': 'MEDIUM',
+                'category': 'dns',
+                'description': 'No DMARC record found. Email authentication is not enforced.',
+                'recommendation': 'Add a DMARC TXT record to the DNS configuration.',
+                'evidence': f'No DMARC record for _dmarc.{hostname}',
+            })
+
+        caa_output = self._nslookup('caa', hostname).upper()
+        # nslookup doesn't always print a friendly "CAA" label — it may show
+        # the raw type-257 rdata line instead, so match on either.
+        if not any(marker in caa_output for marker in ('CAA', 'RDATA_257', 'ISSUE')):
+            self.findings.append({
+                'title': 'Missing CAA Record',
+                'severity': 'LOW',
+                'category': 'dns',
+                'description': (
+                    'No CAA (Certification Authority Authorization) record found. '
+                    'Any public CA can issue certificates for this domain.'
+                ),
+                'recommendation': (
+                    'Add a CAA record restricting certificate issuance to your '
+                    'chosen certificate authority.'
+                ),
+                'evidence': 'No CAA record found.',
+            })
+
+        dkim_found = any(
+            'v=DKIM1' in self._nslookup('txt', f'{selector}._domainkey.{hostname}')
+            for selector in DKIM_COMMON_SELECTORS
+        )
+        if not dkim_found:
+            self.findings.append({
+                'title': 'No DKIM Record Found (Common Selectors)',
+                'severity': 'LOW',
+                'category': 'dns',
+                'description': (
+                    'No DKIM record was found under common selector names '
+                    f'({", ".join(DKIM_COMMON_SELECTORS)}). The actual selector '
+                    'may differ, so this is informational — verify manually if '
+                    'a custom selector is used.'
+                ),
+                'recommendation': (
+                    'Configure DKIM signing for outbound mail and publish the '
+                    'public key as a DNS TXT record.'
+                ),
+                'evidence': f'No DKIM TXT record at common selectors for {hostname}',
+            })
+
+        dnskey_output = self._nslookup('dnskey', hostname).upper()
+        # Same rdata-line caveat as CAA above (type 48 = DNSKEY).
+        if not any(marker in dnskey_output for marker in ('DNSKEY', 'RDATA_48')):
+            self.findings.append({
+                'title': 'DNSSEC Not Enabled',
+                'severity': 'LOW',
+                'category': 'dns',
+                'description': (
+                    'No DNSKEY record found — the domain does not appear to '
+                    'use DNSSEC, leaving DNS responses unsigned and vulnerable '
+                    'to cache poisoning/spoofing.'
+                ),
+                'recommendation': 'Enable DNSSEC signing at your DNS provider/registrar.',
+                'evidence': 'No DNSKEY record found.',
+            })
+
+        mta_sts_txt = self._nslookup('txt', f'_mta-sts.{hostname}')
+        if 'v=STSv1' not in mta_sts_txt:
+            self.findings.append({
+                'title': 'Missing MTA-STS Record',
+                'severity': 'LOW',
+                'category': 'dns',
+                'description': (
+                    'No MTA-STS (_mta-sts TXT) record found. Without it, '
+                    'inbound mail delivery can be downgraded to unencrypted '
+                    'SMTP via an active network attacker.'
+                ),
+                'recommendation': (
+                    'Publish an MTA-STS policy and the corresponding '
+                    '_mta-sts TXT record to enforce TLS for inbound mail.'
+                ),
+                'evidence': 'No v=STSv1 record found.',
+            })
+
+        if 'v=TLSRPTv1' not in self._nslookup('txt', f'_smtp._tls.{hostname}'):
+            self.findings.append({
+                'title': 'Missing TLS-RPT Record',
+                'severity': 'INFO',
+                'category': 'dns',
+                'description': (
+                    'No TLS-RPT (_smtp._tls TXT) record found. Without it, '
+                    'you won\'t receive reports about SMTP TLS delivery failures.'
+                ),
+                'recommendation': (
+                    'Add a _smtp._tls TXT record (v=TLSRPTv1; rua=mailto:...) '
+                    'to receive TLS failure reports.'
+                ),
+                'evidence': 'No v=TLSRPTv1 record found.',
+            })
+
+    def _check_zone_transfer(self, hostname):
+        """Attempt an AXFR zone transfer against each authoritative nameserver.
+
+        A misconfigured nameserver that permits AXFR from anyone leaks the
+        domain's entire DNS zone (every subdomain, internal hostnames, etc.)
+        to an unauthenticated requester.
+        """
         import subprocess
 
-        try:
-            # Check SPF
-            result = subprocess.run(
-                ['nslookup', '-type=txt', hostname],
-                capture_output=True, text=True, timeout=10
-            )
-            if 'v=spf1' not in result.stdout:
-                self.findings.append({
-                    'title': 'Missing SPF Record',
-                    'severity': 'MEDIUM',
-                    'category': 'dns',
-                    'description': 'No SPF record found. Email spoofing may be possible.',
-                    'recommendation': 'Add an SPF TXT record to the DNS configuration.',
-                    'evidence': 'No v=spf1 record found.',
-                })
+        ns_output = self._nslookup('ns', hostname)
+        nameservers = re.findall(r'nameserver\s*=\s*([\w.-]+)', ns_output, re.IGNORECASE)
+        if not nameservers:
+            return
 
-            # Check DMARC
-            result = subprocess.run(
-                ['nslookup', '-type=txt', f'_dmarc.{hostname}'],
-                capture_output=True, text=True, timeout=10
-            )
-            if 'v=DMARC1' not in result.stdout:
-                self.findings.append({
-                    'title': 'Missing DMARC Record',
-                    'severity': 'MEDIUM',
-                    'category': 'dns',
-                    'description': 'No DMARC record found. Email authentication is not enforced.',
-                    'recommendation': 'Add a DMARC TXT record to the DNS configuration.',
-                    'evidence': f'No DMARC record for _dmarc.{hostname}',
-                })
-
-        except Exception as e:
-            logger.warning(f"DNS check error for {hostname}: {e}")
+        for ns in nameservers[:5]:
+            ns = ns.rstrip('.')
+            try:
+                result = subprocess.run(
+                    ['nslookup', f'-type=axfr', hostname, ns],
+                    capture_output=True, text=True, timeout=10,
+                )
+                output = result.stdout
+                # A refused/failed transfer explicitly says so; a successful
+                # one dumps many resource records instead.
+                if (
+                    'Transfer failed' not in output
+                    and 'refused' not in output.lower()
+                    and output.count('\n') > 10
+                ):
+                    self.findings.append({
+                        'title': 'DNS Zone Transfer (AXFR) Allowed',
+                        'severity': 'HIGH',
+                        'category': 'dns',
+                        'description': (
+                            f'Nameserver {ns} allows unauthenticated AXFR zone '
+                            'transfers, leaking the complete DNS zone (every '
+                            'subdomain and internal hostname) for the domain.'
+                        ),
+                        'recommendation': (
+                            'Restrict AXFR to authorized secondary nameservers '
+                            'only (allow-transfer in BIND, or the equivalent on '
+                            'your DNS provider).'
+                        ),
+                        'evidence': f'AXFR from {ns} returned {output.count(chr(10))} lines of records.',
+                    })
+            except Exception as e:
+                logger.warning(f"Zone transfer check failed for {ns}: {e}")
 
     # ------------------------------------------------------------------
     # Subdomain discovery & scanning

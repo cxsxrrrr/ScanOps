@@ -112,6 +112,10 @@ class Finding(models.Model):
         ('technology', 'Technology'),
         ('cache_deception', 'Web Cache Deception'),
         ('llm', 'Web LLM Attacks'),
+        ('http_methods', 'HTTP Methods'),
+        ('crlf_injection', 'CRLF Injection'),
+        ('sri', 'Subresource Integrity'),
+        ('postmessage', 'postMessage Security'),
         ('other', 'Other'),
     ]
 
