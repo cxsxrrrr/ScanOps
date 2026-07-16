@@ -463,6 +463,17 @@ export default function AdminDashboard() {
                                             <p className="text-xs text-destructive mt-1 truncate">{err.error}</p>
                                         </div>
                                     ))}
+                                    {errors?.email_errors?.map((err) => (
+                                        <div key={`email-${err.id}`} className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 text-sm">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">Email {err.email_type} — {err.organization__name || 'Sin organización'}</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(err.sent_at).toLocaleString('es-VE')}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-destructive mt-1 truncate">{err.error}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </CardContent>
