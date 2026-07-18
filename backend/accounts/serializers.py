@@ -45,9 +45,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'first_name', 'last_name', 'role',
             'organization', 'organization_name', 'date_joined',
-            'accepted_terms_at',
+            'accepted_terms_at', 'is_active',
         ]
-        read_only_fields = ['id', 'email', 'role', 'date_joined', 'accepted_terms_at']
+        # is_active is read-only here so a user can never reactivate/suspend
+        # themselves via their own profile PATCH — only the admin panel's
+        # AdminUserUpdateSerializer (a separate serializer) can write it.
+        read_only_fields = ['id', 'email', 'role', 'date_joined', 'accepted_terms_at', 'is_active']
 
     def update(self, instance, validated_data):
         org_name = validated_data.pop('organization_name', None)

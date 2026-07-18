@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     'reports',
     'notifications',
     'administration',
+    'audit_log',
+    'support',
 ]
 
 MIDDLEWARE = [
@@ -45,6 +47,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'audit_log.middleware.APIRequestLogMiddleware',
 ]
 
 ROOT_URLCONF = 'auditoria.urls'
@@ -98,6 +101,10 @@ USE_TZ = True
 # --- Static Files ---
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# --- Media (user-uploaded files, e.g. support ticket attachments) ---
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # --- Default Primary Key ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -158,6 +165,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'notifications.tasks.send_scheduled_reports',
         'schedule': 3600.0,  # Check every hour
     },
+    'cleanup-expired-invitations': {
+        'task': 'accounts.tasks.cleanup_expired_invitations',
+        'schedule': 86400.0,  # Once a day
+    },
 }
 
 # --- Google Gemini ---
@@ -165,7 +176,7 @@ GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
 # --- Resend ---
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
-RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='onboarding@resend.dev')
+RESEND_FROM_EMAIL = config('RESEND_FROM_EMAIL', default='Vigia <onboarding@resend.dev>')
 
 # --- Stripe ---
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')

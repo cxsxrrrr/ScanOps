@@ -59,7 +59,14 @@ def organization_detail(request):
             
         org = Organization.objects.create(name=name, plan='free', url_limit=1)
         request.user.organization = org
-        request.user.save(update_fields=['organization'])
+        update_fields = ['organization']
+        # The founding member of a brand-new org gets org_admin so they can
+        # manage their own team (invite/revoke) without needing platform-wide
+        # 'admin' access. Never downgrades an existing elevated role.
+        if request.user.role == 'user':
+            request.user.role = 'org_admin'
+            update_fields.append('role')
+        request.user.save(update_fields=update_fields)
         
         if request.method == 'GET':
             return Response(OrganizationSerializer(org).data)
@@ -68,6 +75,12 @@ def organization_detail(request):
     if request.method == 'GET':
         serializer = OrganizationSerializer(request.user.organization)
         return Response(serializer.data)
+
+    if 'name' in request.data and request.user.role not in User.ORG_MANAGER_ROLES:
+        return Response(
+            {'detail': 'Solo un administrador de la organización puede cambiar su nombre.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     serializer = OrganizationSerializer(
         request.user.organization, data=request.data, partial=True
@@ -120,22 +133,30 @@ def invitation_list(request):
         invitations = Invitation.objects.filter(
             organization=org, accepted_by__isnull=True
         ).select_related('created_by').values(
-            'id', 'token', 'created_at', 'created_by__email'
+            'id', 'token', 'created_at', 'expires_at', 'created_by__email'
         )
+        now = timezone.now()
         result = []
         for inv in invitations:
             result.append({
                 'id': inv['id'],
                 'token': str(inv['token']),
                 'created_at': inv['created_at'],
+                'expires_at': inv['expires_at'],
                 'created_by__email': inv['created_by__email'],
                 'uses': 0,
                 'max_uses': 1,
-                'is_valid': True,
+                'is_valid': inv['expires_at'] > now,
             })
         return Response(result)
 
-    # POST: create invitation
+    # POST: create invitation — only org managers (org_admin/admin) may invite.
+    if request.user.role not in User.ORG_MANAGER_ROLES:
+        return Response(
+            {'detail': 'Solo un administrador de la organización puede invitar miembros.'},
+            status=403,
+        )
+
     member_count = org.users.count()
     member_limit = PLAN_MEMBER_LIMITS.get(org.plan, 1)
     if member_count >= member_limit:
@@ -151,6 +172,7 @@ def invitation_list(request):
         'id': invitation.id,
         'token': str(invitation.token),
         'created_at': invitation.created_at,
+        'expires_at': invitation.expires_at,
         'uses': 0,
         'max_uses': 1,
         'is_valid': True,
@@ -162,6 +184,11 @@ def invitation_list(request):
 def revoke_invitation(request, invitation_id):
     """Revoke a pending invitation."""
     org = request.user.organization
+    if request.user.role not in User.ORG_MANAGER_ROLES:
+        return Response(
+            {'detail': 'Solo un administrador de la organización puede revocar invitaciones.'},
+            status=403,
+        )
     try:
         invitation = Invitation.objects.get(
             id=invitation_id, organization=org, accepted_by__isnull=True
@@ -180,6 +207,10 @@ def invitation_info(request, token):
         invitation = Invitation.objects.select_related('organization', 'created_by').get(
             token=token, accepted_by__isnull=True
         )
+        if invitation.is_expired:
+            return Response(
+                {'detail': 'Esta invitación ha expirado. Solicita un nuevo enlace.'}, status=404
+            )
         org = invitation.organization
         member_limit = PLAN_MEMBER_LIMITS.get(org.plan, 1)
         return Response({
@@ -191,6 +222,7 @@ def invitation_info(request, token):
             'member_limit': member_limit,
             'created_by_email': invitation.created_by.email,
             'created_at': invitation.created_at,
+            'expires_at': invitation.expires_at,
         })
     except Invitation.DoesNotExist:
         return Response(
@@ -211,6 +243,11 @@ def accept_invitation(request, token):
             {'detail': 'Invitacion invalida o ya aceptada.'}, status=404
         )
 
+    if invitation.is_expired:
+        return Response(
+            {'detail': 'Esta invitación ha expirado. Solicita un nuevo enlace.'}, status=404
+        )
+
     org = invitation.organization
     member_count = org.users.count()
     member_limit = PLAN_MEMBER_LIMITS.get(org.plan, 1)
@@ -220,11 +257,24 @@ def accept_invitation(request, token):
             status=400,
         )
 
-    if request.user.organization and request.user.organization != org:
-        return Response(
-            {'detail': 'Ya perteneces a otra organizacion. Sal de ella primero.'},
-            status=400,
+    old_org = request.user.organization
+    if old_org and old_org != org:
+        # A brand-new account gets a placeholder org lazily auto-created the
+        # moment it hits GET /auth/organization/ (see organization_detail) —
+        # if that's all this org is (just this user, nothing registered
+        # yet), silently swap them into the invited org instead of blocking
+        # the invite on an org they never intentionally created.
+        from urls_manager.models import URLAsset
+        is_untouched_placeholder = (
+            old_org.users.count() == 1
+            and not URLAsset.objects.filter(organization=old_org).exists()
         )
+        if not is_untouched_placeholder:
+            return Response(
+                {'detail': 'Ya perteneces a otra organizacion. Sal de ella primero.'},
+                status=400,
+            )
+        old_org.delete()
 
     request.user.organization = org
     if request.data.get('first_name'):

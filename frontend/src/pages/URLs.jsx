@@ -15,17 +15,22 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
     Globe, Plus, Trash2, ScanSearch, Loader2,
     ExternalLink, AlertCircle, Lock, Sparkles, AlertTriangle,
+    Pencil, Check, X,
 } from 'lucide-react'
 
 export default function URLs() {
     const [urls,            setUrls]            = useState([])
     const [loading,         setLoading]         = useState(true)
     const [newUrl,          setNewUrl]          = useState('')
+    const [newName,         setNewName]         = useState('')
     const [submitting,      setSubmitting]      = useState(false)
     const [error,           setError]           = useState('')
     const [scanningId,      setScanningId]      = useState(null)
     const [deleteConfirmId, setDeleteConfirmId] = useState(null)
     const [orgData,         setOrgData]         = useState(null)
+    const [editingId,       setEditingId]       = useState(null)
+    const [editName,        setEditName]        = useState('')
+    const [savingName,      setSavingName]      = useState(false)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -61,8 +66,9 @@ export default function URLs() {
         setError('')
         setSubmitting(true)
         try {
-            await api.post('/urls/', { url: newUrl })
+            await api.post('/urls/', { url: newUrl, name: newName.trim() })
             setNewUrl('')
+            setNewName('')
             toast.success('URL registrada exitosamente.')
             loadData()
         } catch (err) {
@@ -77,6 +83,30 @@ export default function URLs() {
             }
         } finally {
             setSubmitting(false)
+        }
+    }
+
+    function startEditName(url) {
+        setEditingId(url.id)
+        setEditName(url.name || '')
+    }
+
+    function cancelEditName() {
+        setEditingId(null)
+        setEditName('')
+    }
+
+    async function saveEditName(id) {
+        setSavingName(true)
+        try {
+            await api.patch(`/urls/${id}/`, { name: editName.trim() })
+            setUrls(prev => prev.map(u => u.id === id ? { ...u, name: editName.trim() } : u))
+            setEditingId(null)
+            toast.success('Nombre actualizado.')
+        } catch {
+            toast.error('Error al actualizar el nombre.')
+        } finally {
+            setSavingName(false)
         }
     }
 
@@ -95,7 +125,9 @@ export default function URLs() {
         setScanningId(urlAssetId)
         try {
             await api.post('/scans/trigger/', { url_asset_id: urlAssetId })
-            toast.success('Escaneo iniciado exitosamente.')
+            toast.success('Escaneo iniciado exitosamente.', {
+                description: 'Puede tardar unos minutos. Te avisaremos cuando termine.',
+            })
             loadData()
         } catch (err) {
             const msg = err.response?.data?.detail || 'Error al iniciar escaneo.'
@@ -176,7 +208,7 @@ export default function URLs() {
                             </CardHeader>
                             <CardContent>
                                 <form onSubmit={handleAddUrl} className="space-y-3">
-                                    <div className="flex gap-3">
+                                    <div className="flex flex-col sm:flex-row gap-3">
                                         <div className="flex-1 relative">
                                             <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
@@ -186,6 +218,15 @@ export default function URLs() {
                                                 placeholder="https://ejemplo.com"
                                                 className="pl-9"
                                                 required
+                                            />
+                                        </div>
+                                        <div className="flex-1 sm:max-w-[220px]">
+                                            <Input
+                                                type="text"
+                                                value={newName}
+                                                onChange={(e) => setNewName(e.target.value)}
+                                                placeholder="Nombre (opcional)"
+                                                maxLength={120}
                                             />
                                         </div>
                                         <Button type="submit" disabled={submitting}>
@@ -249,25 +290,76 @@ export default function URLs() {
                                                 ) : (
                                                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusColor(url.last_scan_status)} bg-current`} />
                                                 )}
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    {editingId === url.id ? (
+                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                            <Input
+                                                                autoFocus
+                                                                value={editName}
+                                                                onChange={(e) => setEditName(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') saveEditName(url.id)
+                                                                    if (e.key === 'Escape') cancelEditName()
+                                                                }}
+                                                                placeholder="Nombre de la URL"
+                                                                maxLength={120}
+                                                                className="h-7 text-sm max-w-[220px]"
+                                                            />
+                                                            <Button
+                                                                size="icon" variant="ghost" className="h-7 w-7 text-emerald-500"
+                                                                disabled={savingName}
+                                                                onClick={() => saveEditName(url.id)}
+                                                                aria-label="Guardar nombre"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
+                                                                disabled={savingName}
+                                                                onClick={cancelEditName}
+                                                                aria-label="Cancelar"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5 group/name">
+                                                            <a
+                                                                href={url.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={`text-sm font-medium transition-colors flex items-center gap-1 truncate ${
+                                                                    blocked ? 'text-muted-foreground' : 'hover:text-blue-500'
+                                                                }`}
+                                                            >
+                                                                {url.name || url.url}
+                                                                <ExternalLink className="w-4 h-4 flex-shrink-0 opacity-70" />
+                                                            </a>
+                                                            {blocked && (
+                                                                <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30 flex-shrink-0">
+                                                                    BLOQUEADA
+                                                                </Badge>
+                                                            )}
+                                                            <button
+                                                                onClick={() => startEditName(url)}
+                                                                className="opacity-0 group-hover/name:opacity-100 transition-opacity text-muted-foreground hover:text-foreground flex-shrink-0"
+                                                                aria-label="Editar nombre"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {url.name && (
                                                         <a
                                                             href={url.url}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className={`text-sm font-medium transition-colors flex items-center gap-1 truncate ${
-                                                                blocked ? 'text-muted-foreground' : 'hover:text-blue-500'
-                                                            }`}
+                                                            className="text-xs text-muted-foreground hover:text-blue-500 transition-colors flex items-center gap-1 truncate"
                                                         >
                                                             {url.url}
-                                                            <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-40" />
+                                                            <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
                                                         </a>
-                                                        {blocked && (
-                                                            <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30 flex-shrink-0">
-                                                                BLOQUEADA
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                     <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
                                                         {blocked ? (
                                                             <span className="text-amber-500">Actualiza tu plan para desbloquear</span>

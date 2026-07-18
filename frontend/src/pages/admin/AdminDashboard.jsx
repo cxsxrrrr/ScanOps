@@ -15,12 +15,15 @@ import {
     ShieldCheck, Users, ScanSearch, AlertTriangle,
     Mail, Loader2, RefreshCw, XCircle, Building,
     Crown, Zap, Shield, Check, BarChart3, CheckCircle2,
-    Clock, Activity, Search, ChevronLeft, ChevronRight,
+    Clock, Activity, Search, ChevronLeft, ChevronRight, LifeBuoy,
+    ScrollText,
 } from 'lucide-react'
 
 import { EditOrgModal } from './EditOrgModal'
 import { EditUserModal } from './EditUserModal'
 import { OrgAnalyticsModal } from './OrgAnalyticsModal'
+import { AdminSupportPanel } from './AdminSupportPanel'
+import { AdminAuditLogPanel } from './AdminAuditLogPanel'
 
 const planConfig = {
     free:     { icon: Shield,  label: 'Free',     gradient: 'from-gray-500 to-gray-600',    badge: 'plan-badge-free' },
@@ -46,6 +49,7 @@ export default function AdminDashboard() {
     const [pageOrgs, setPageOrgs] = useState(1)
 
     const [searchUsers, setSearchUsers] = useState('')
+    const [roleFilterUsers, setRoleFilterUsers] = useState('all')
     const [pageUsers, setPageUsers] = useState(1)
 
     const ITEMS_PER_PAGE = 10
@@ -120,7 +124,9 @@ export default function AdminDashboard() {
     const paginatedOrgs = filteredOrgs.slice((pageOrgs - 1) * ITEMS_PER_PAGE, pageOrgs * ITEMS_PER_PAGE)
     const totalPagesOrgs = Math.ceil(filteredOrgs.length / ITEMS_PER_PAGE) || 1
 
-    const filteredUsers = users.filter(user => user.email.toLowerCase().includes(searchUsers.toLowerCase()))
+    const filteredUsers = users
+        .filter(user => user.email.toLowerCase().includes(searchUsers.toLowerCase()))
+        .filter(user => roleFilterUsers === 'all' || user.role === roleFilterUsers)
     const paginatedUsers = filteredUsers.slice((pageUsers - 1) * ITEMS_PER_PAGE, pageUsers * ITEMS_PER_PAGE)
     const totalPagesUsers = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE) || 1
 
@@ -154,6 +160,12 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="errors"    className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
                         <AlertTriangle className="w-4 h-4" /> Errores
+                    </TabsTrigger>
+                    <TabsTrigger value="support"   className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
+                        <LifeBuoy className="w-4 h-4" /> Soporte
+                    </TabsTrigger>
+                    <TabsTrigger value="audit"     className="flex-1 flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] hover:bg-accent hover:text-accent-foreground data-[state=active]:shadow-md">
+                        <ScrollText className="w-4 h-4" /> Auditoría
                     </TabsTrigger>
                 </TabsList>
 
@@ -331,6 +343,9 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
+                                                    <Button variant="secondary" size="sm" onClick={() => setViewingAnalytics(org.id)}>
+                                                        Ver miembros
+                                                    </Button>
                                                     <Button variant="outline" size="sm" onClick={() => setEditingOrg(org)}>
                                                         Editar
                                                     </Button>
@@ -340,7 +355,7 @@ export default function AdminDashboard() {
                                     })
                                 )}
                             </div>
-                            
+
                             {totalPagesOrgs > 1 && (
                                 <div className="flex items-center justify-between px-4 py-3 border-t">
                                     <span className="text-sm text-muted-foreground">Página {pageOrgs} de {totalPagesOrgs}</span>
@@ -365,14 +380,25 @@ export default function AdminDashboard() {
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Users className="w-4 h-4 text-blue-500" /> Usuarios ({users.length})
                             </CardTitle>
-                            <div className="relative w-64">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Buscar usuario..."
-                                    className="pl-8"
-                                    value={searchUsers}
-                                    onChange={(e) => { setSearchUsers(e.target.value); setPageUsers(1); }}
-                                />
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-64">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Buscar usuario..."
+                                        className="pl-8"
+                                        value={searchUsers}
+                                        onChange={(e) => { setSearchUsers(e.target.value); setPageUsers(1); }}
+                                    />
+                                </div>
+                                <Select value={roleFilterUsers} onValueChange={(v) => { setRoleFilterUsers(v); setPageUsers(1); }}>
+                                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos los roles</SelectItem>
+                                        <SelectItem value="user">User</SelectItem>
+                                        <SelectItem value="org_admin">Org Admin</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -381,11 +407,14 @@ export default function AdminDashboard() {
                                     <p className="p-8 text-center text-muted-foreground text-sm">No se encontraron resultados.</p>
                                 ) : (
                                     paginatedUsers.map((u) => (
-                                        <div key={u.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
+                                        <div key={u.id} className={`flex items-center justify-between p-4 hover:bg-accent/50 transition-colors ${u.is_active === false ? 'opacity-60' : ''}`}>
                                             <div>
                                                 <p className="font-medium text-sm">{u.email}</p>
                                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                    <span className={`${u.role === 'admin' ? 'role-badge-admin' : 'role-badge-user'} px-2 py-0.5 rounded text-[10px] font-bold`}>
+                                                    {u.is_active === false && (
+                                                        <Badge variant="destructive" className="text-[10px]">BLOQUEADO</Badge>
+                                                    )}
+                                                    <span className={`role-badge-${u.role || 'user'} px-2 py-0.5 rounded text-[10px] font-bold`}>
                                                         {u.role?.toUpperCase()}
                                                     </span>
                                                     {u.organization__name && (
@@ -457,14 +486,35 @@ export default function AdminDashboard() {
                                             <p className="text-xs text-destructive mt-1 truncate">{err.error}</p>
                                         </div>
                                     ))}
+                                    {errors?.email_errors?.map((err) => (
+                                        <div key={`email-${err.id}`} className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 text-sm">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">Email {err.email_type} — {err.organization__name || 'Sin organización'}</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(err.sent_at).toLocaleString('es-VE')}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-destructive mt-1 truncate">{err.error}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </CardContent>
                     </Card>
                 </TabsContent>
+
+                {/* Support */}
+                <TabsContent value="support" className="mt-4">
+                    <AdminSupportPanel />
+                </TabsContent>
+
+                {/* Audit log */}
+                <TabsContent value="audit" className="mt-4">
+                    <AdminAuditLogPanel />
+                </TabsContent>
             </Tabs>
-            
-            <EditOrgModal 
+
+            <EditOrgModal
                 org={editingOrg} 
                 open={!!editingOrg} 
                 onOpenChange={(v) => !v && setEditingOrg(null)} 

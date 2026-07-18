@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import api from '../lib/api'
+import { formatDate } from '../lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ export default function Settings() {
     const [members,       setMembers]       = useState([])
     const [invitations,   setInvitations]   = useState([])
     const [org,           setOrg]           = useState(null)
+    const [myRole,        setMyRole]        = useState('user')
     const [creatingInvite,setCreatingInvite]= useState(false)
     const [copied,        setCopied]        = useState(null)
     const [teamError,     setTeamError]     = useState(null)
@@ -40,13 +42,14 @@ export default function Settings() {
     async function loadAll(signal) {
         const cfg = { signal }
         try {
-            const [configRes, logsRes, membersRes, invitesRes, orgRes, llmRes] = await Promise.all([
+            const [configRes, logsRes, membersRes, invitesRes, orgRes, llmRes, profileRes] = await Promise.all([
                 api.get('/notifications/config/', cfg).catch(() => ({ data: { frequency: 'weekly', enabled: true } })),
                 api.get('/notifications/logs/', cfg).catch(() => ({ data: [] })),
                 api.get('/auth/team/', cfg).catch(() => ({ data: [] })),
                 api.get('/auth/invitations/', cfg).catch(() => ({ data: [] })),
                 api.get('/auth/organization/', cfg).catch(() => ({ data: null })),
                 api.get('/auth/organization/llm-config/', cfg).catch(() => ({ data: { provider: 'default', api_key: '', model_name: '' } })),
+                api.get('/auth/profile/', cfg).catch(() => ({ data: null })),
             ])
             setConfig(configRes.data)
             setLogs(logsRes.data)
@@ -54,6 +57,7 @@ export default function Settings() {
             setInvitations(invitesRes.data)
             setOrg(orgRes.data)
             setLlmConfig({ ...llmRes.data, api_key: '' }) // Clear key for security, handle has_api_key visually if needed
+            setMyRole(profileRes.data?.role || 'user')
         } catch (err) {
             if (err.code === 'ERR_CANCELED') return
             console.error('Failed to load settings:', err)
@@ -160,8 +164,15 @@ export default function Settings() {
     }
 
     const visibleMemberCount = members.length
-    const canInvite = org && visibleMemberCount < org.member_limit
+    const canManageTeam = myRole === 'org_admin' || myRole === 'admin'
+    const canInvite = canManageTeam && org && visibleMemberCount < org.member_limit
     const isFree    = org?.plan === 'free'
+
+    const roleBadge = {
+        admin:     { label: 'Admin',        className: 'text-amber-500 border-amber-500/30', Icon: Crown },
+        org_admin: { label: 'Admin equipo', className: 'text-purple-500 border-purple-500/30', Icon: Shield },
+        user:      { label: 'Usuario',      className: 'text-blue-500 border-blue-500/30', Icon: Shield },
+    }
 
     if (loading) return (
         <div className="max-w-3xl mx-auto space-y-5">
@@ -208,9 +219,9 @@ export default function Settings() {
                                             <p className="text-xs text-muted-foreground">{m.email}</p>
                                         </div>
                                     </div>
-                                    <Badge variant="outline" className={`text-xs ${m.role === 'admin' ? 'text-amber-500 border-amber-500/30' : 'text-blue-500 border-blue-500/30'}`}>
-                                        {m.role === 'admin' ? <Crown className="w-3 h-3 mr-1" /> : <Shield className="w-3 h-3 mr-1" />}
-                                        {m.role === 'admin' ? 'Admin' : 'Usuario'}
+                                    <Badge variant="outline" className={`text-xs ${(roleBadge[m.role] || roleBadge.user).className}`}>
+                                        {(() => { const Icon = (roleBadge[m.role] || roleBadge.user).Icon; return <Icon className="w-3 h-3 mr-1" /> })()}
+                                        {(roleBadge[m.role] || roleBadge.user).label}
                                     </Badge>
                                 </div>
                             ))}
@@ -228,6 +239,13 @@ export default function Settings() {
                                 <p className="text-sm font-medium text-amber-500">Plan Free</p>
                                 <p className="text-xs text-muted-foreground">Actualiza a Pro o Ultimate para invitar miembros.</p>
                             </div>
+                        </div>
+                    ) : !canManageTeam ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border">
+                            <Link2 className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                            <p className="text-sm text-muted-foreground">
+                                Solo un administrador de la organización puede gestionar invitaciones.
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -255,8 +273,11 @@ export default function Settings() {
                                                 <p className="text-xs text-muted-foreground mt-0.5">
                                                     {inv.uses} uso(s){inv.max_uses > 0 && ` / ${inv.max_uses} máx`} ·{' '}
                                                     <span className={inv.is_valid ? 'text-emerald-500' : 'text-red-500'}>
-                                                        {inv.is_valid ? 'Activo' : 'Inactivo'}
+                                                        {inv.is_valid ? 'Activo' : 'Expirado'}
                                                     </span>
+                                                    {inv.expires_at && (
+                                                        <> · {inv.is_valid ? 'Expira' : 'Expiró'} {formatDate(inv.expires_at)}</>
+                                                    )}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-1.5 ml-3">

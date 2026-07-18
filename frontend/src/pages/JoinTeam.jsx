@@ -40,10 +40,11 @@ export default function JoinTeam() {
             setInfo(res.data)
         } catch (err) {
             const status = err.response?.status
-            if (status === 404)      setError('Esta invitación no existe.')
-            else if (status === 410) setError('Esta invitación ya no es válida.')
-            else if (status === 403) setError('Esta organización ha alcanzado el límite de miembros.')
-            else                     setError('No se pudo cargar la invitación.')
+            const detail = err.response?.data?.detail
+            if (status === 404)      setError(detail || 'Esta invitación no existe.')
+            else if (status === 410) setError(detail || 'Esta invitación ya no es válida.')
+            else if (status === 403) setError(detail || 'Esta organización ha alcanzado el límite de miembros.')
+            else                     setError(detail || 'No se pudo cargar la invitación.')
         } finally {
             setLoading(false)
         }

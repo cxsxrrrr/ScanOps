@@ -2,10 +2,17 @@
 User and Organization models for Vigia.
 """
 import uuid
+from datetime import timedelta
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+
+INVITATION_EXPIRY_DAYS = 7
+
+
+def _default_invitation_expiry():
+    return timezone.now() + timedelta(days=INVITATION_EXPIRY_DAYS)
 
 
 # Plan configuration: plan_key -> url_limit
@@ -81,8 +88,13 @@ class User(AbstractUser):
 
     ROLE_CHOICES = [
         ('user', 'User'),
+        ('org_admin', 'Org Admin'),
         ('admin', 'Admin'),
     ]
+
+    # Roles allowed to manage their own organization's team (invite/revoke members).
+    # Platform 'admin' can do everything org_admin can, plus cross-org platform access.
+    ORG_MANAGER_ROLES = ('org_admin', 'admin')
 
     clerk_user_id = models.CharField(max_length=200, unique=True, null=True, blank=True)
     organization = models.ForeignKey(
@@ -129,6 +141,7 @@ class Invitation(models.Model):
         User, on_delete=models.CASCADE, related_name='sent_invitations'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=_default_invitation_expiry)
     accepted_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='accepted_invitations'
     )
@@ -141,8 +154,12 @@ class Invitation(models.Model):
         return f"Invitation {self.token} → {self.organization.name}"
 
     @property
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    @property
     def is_active(self):
-        return self.accepted_by is None
+        return self.accepted_by is None and not self.is_expired
 
 
 class OrganizationLLMConfig(models.Model):

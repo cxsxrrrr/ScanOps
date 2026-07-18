@@ -1,4 +1,5 @@
 """Admin panel views for system administration."""
+from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import permissions, status
@@ -9,20 +10,15 @@ from accounts.models import User, Organization, PLAN_LIMITS
 from accounts.serializers import OrganizationSerializer
 from scanner.models import Scan, Finding
 from notifications.models import EmailLog
+from audit_log.models import APIRequestLog, AdminActionLog
 
 
 class IsAdminUser(permissions.BasePermission):
     """Only allow admin users."""
     def has_permission(self, request, view):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            f"Admin check: user={request.user.email} "
-            f"role={request.user.role} "
-            f"clerk_id={request.user.clerk_user_id} "
-            f"is_auth={request.user.is_authenticated}"
-        )
-        return request.user.is_authenticated and request.user.role == 'admin'
+        if not request.user.is_authenticated:
+            return False
+        return request.user.role == 'admin'
 
 
 @api_view(['GET'])
@@ -132,9 +128,15 @@ def scan_config(request):
 @permission_classes([IsAdminUser])
 def user_list(request):
     """List all users (admin view)."""
+    from accounts.clerk_api import backfill_real_emails, is_placeholder_email
+
+    all_users = list(User.objects.select_related('organization').all())
+    if any(is_placeholder_email(u.email) for u in all_users):
+        backfill_real_emails(all_users)
+
     users = User.objects.select_related('organization').all().values(
-        'id', 'email', 'first_name', 'last_name', 'role',
-        'organization__name', 'organization__plan',
+        'id', 'email', 'first_name', 'last_name', 'role', 'is_active',
+        'organization_id', 'organization__name', 'organization__plan',
         'date_joined', 'last_login', 'accepted_terms_at',
     )
     return Response(list(users))
@@ -175,34 +177,6 @@ def update_org_plan(request, pk):
     })
 
 
-@api_view(['PATCH'])
-@permission_classes([IsAdminUser])
-def update_user_role(request, pk):
-    """Update a user's role (admin only)."""
-    try:
-        user = User.objects.get(pk=pk)
-    except User.DoesNotExist:
-        return Response(
-            {'detail': 'User not found.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    new_role = request.data.get('role')
-    if new_role not in dict(User.ROLE_CHOICES):
-        return Response(
-            {'detail': 'Invalid role. Options: user, admin'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    user.role = new_role
-    user.save(update_fields=['role'])
-    return Response({
-        'detail': f'Role updated to {new_role}.',
-        'user_id': user.id,
-        'role': user.role,
-    })
-
-
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAdminUser])
 def organization_detail(request, pk):
@@ -217,9 +191,20 @@ def organization_detail(request, pk):
 
     elif request.method == 'PUT':
         from .serializers import AdminOrgUpdateSerializer
+        before_plan = org.plan
         serializer = AdminOrgUpdateSerializer(org, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            if 'plan' in request.data and org.plan != before_plan:
+                AdminActionLog.objects.create(
+                    action='plan_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_org_id=org.id,
+                    target_org_name=org.name,
+                    before_value=before_plan,
+                    after_value=org.plan,
+                )
             return Response(OrganizationSerializer(org).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -243,9 +228,48 @@ def user_detail(request, pk):
 
     elif request.method == 'PUT':
         from .serializers import AdminUserUpdateSerializer
+        if user.pk == request.user.pk and request.data.get('is_active') is False:
+            return Response(
+                {'detail': 'No puedes bloquear tu propia cuenta.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        before_role = user.role
+        before_org_id = user.organization_id
+        before_org_name = str(user.organization) if user.organization else ''
+        before_active = user.is_active
         serializer = AdminUserUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            if 'role' in request.data and user.role != before_role:
+                AdminActionLog.objects.create(
+                    action='role_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_user_id=user.id,
+                    target_user_email=user.email,
+                    before_value=before_role,
+                    after_value=user.role,
+                )
+            if 'organization' in request.data and user.organization_id != before_org_id:
+                AdminActionLog.objects.create(
+                    action='org_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_user_id=user.id,
+                    target_user_email=user.email,
+                    before_value=before_org_name,
+                    after_value=str(user.organization) if user.organization else '',
+                )
+            if 'is_active' in request.data and user.is_active != before_active:
+                AdminActionLog.objects.create(
+                    action='block_change',
+                    performed_by=request.user,
+                    performed_by_email=request.user.email,
+                    target_user_id=user.id,
+                    target_user_email=user.email,
+                    before_value='active' if before_active else 'blocked',
+                    after_value='active' if user.is_active else 'blocked',
+                )
             return Response(UserSerializer(user).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -307,7 +331,12 @@ def analytics_organization_detail(request, pk):
     except Organization.DoesNotExist:
         return Response({'detail': 'Organization not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Users
+    # Users — backfill real Clerk emails in place of the placeholder
+    # {clerk_id}@clerk.user before serializing (same as user_list).
+    from accounts.clerk_api import backfill_real_emails, is_placeholder_email
+    org_users = list(org.users.all())
+    if any(is_placeholder_email(u.email) for u in org_users):
+        backfill_real_emails(org_users)
     users_data = org.users.values('id', 'email', 'role', 'last_login')
 
     # URLs and their last scan status
@@ -362,4 +391,100 @@ def analytics_organization_detail(request, pk):
         'users': list(users_data),
         'urls': urls_data,
         'recent_scans': scan_history[-50:], # limit global chart to 50
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def audit_log_list(request):
+    """List API request audit logs (admin only) — evidence trail, paginated."""
+    logs = APIRequestLog.objects.all()
+
+    ip = request.query_params.get('ip')
+    if ip:
+        logs = logs.filter(ip_address__icontains=ip)
+
+    method = request.query_params.get('method')
+    if method:
+        logs = logs.filter(method=method.upper())
+
+    search = request.query_params.get('search')
+    if search:
+        logs = logs.filter(
+            Q(path__icontains=search)
+            | Q(user_email__icontains=search)
+            | Q(organization_name__icontains=search)
+        )
+
+    try:
+        page = max(int(request.query_params.get('page', 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = min(max(int(request.query_params.get('page_size', 50)), 1), 200)
+    except (TypeError, ValueError):
+        page_size = 50
+
+    total = logs.count()
+    start = (page - 1) * page_size
+    results = logs[start:start + page_size].values(
+        'id', 'created_at', 'method', 'path', 'query_string', 'status_code',
+        'ip_address', 'user_id', 'user_email', 'organization_id',
+        'organization_name', 'user_agent', 'response_time_ms',
+    )
+
+    return Response({
+        'count': total,
+        'page': page,
+        'page_size': page_size,
+        'results': list(results),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_action_log_list(request):
+    """List admin action audit logs (who changed what) — paginated.
+
+    Distinct from audit_log_list (raw HTTP request trail): this is the
+    explicit before/after diff for sensitive actions — role changes,
+    org moves, plan changes, block/unblock — so an admin can answer
+    "who did this and what did it change" without querying the DB.
+    """
+    logs = AdminActionLog.objects.all()
+
+    action = request.query_params.get('action')
+    if action:
+        logs = logs.filter(action=action)
+
+    search = request.query_params.get('search')
+    if search:
+        logs = logs.filter(
+            Q(performed_by_email__icontains=search)
+            | Q(target_user_email__icontains=search)
+            | Q(target_org_name__icontains=search)
+        )
+
+    try:
+        page = max(int(request.query_params.get('page', 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = min(max(int(request.query_params.get('page_size', 50)), 1), 200)
+    except (TypeError, ValueError):
+        page_size = 50
+
+    total = logs.count()
+    start = (page - 1) * page_size
+    results = logs[start:start + page_size].values(
+        'id', 'created_at', 'action', 'performed_by_email',
+        'target_user_id', 'target_user_email', 'target_org_id',
+        'target_org_name', 'before_value', 'after_value',
+    )
+
+    return Response({
+        'count': total,
+        'page': page,
+        'page_size': page_size,
+        'results': list(results),
     })

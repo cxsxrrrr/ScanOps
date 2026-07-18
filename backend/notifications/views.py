@@ -48,6 +48,12 @@ def send_report(request):
     if not request.user.organization:
         return Response({'detail': 'No organization.'}, status=400)
 
-    send_manual_report.delay(request.user.organization.id)
+    try:
+        send_manual_report.delay(request.user.organization.id)
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al enviar el reporte: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    return Response({'detail': 'Reporte en proceso de envío.'}, status=status.HTTP_200_OK)
+    return Response({'detail': 'Reporte enviado exitosamente.'}, status=status.HTTP_200_OK)

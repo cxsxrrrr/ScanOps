@@ -617,24 +617,31 @@ def check_technologies(response, parsed_url, findings):
             continue
 
         vulns = KNOWN_VULNERABILITIES.get(tech['name'], [])
-        for vuln in vulns:
-            if _is_version_below(tech['version'], vuln['below']):
-                findings.append({
-                    'title': f'Vulnerable {tech["name"]} {tech["version"]}',
-                    'severity': vuln['severity'],
-                    'category': 'technology',
-                    'description': (
-                        f'{tech["name"]} version {tech["version"]} is vulnerable. '
-                        f'{vuln["description"]} '
-                        f'(Affects versions below {vuln["below"]})'
-                    ),
-                    'recommendation': (
-                        f'Update {tech["name"]} to version {vuln["below"]} or later. '
-                        f'CVEs: {vuln["cves"]}.'
-                    ),
-                    'evidence': (
-                        f'Detected: {tech["name"]} {tech["version"]}, '
-                        f'vulnerable below {vuln["below"]}'
-                    ),
-                })
-                break  # Report only the most critical vulnerability match
+        # Rules aren't stored in a fixed severity order, so picking the first
+        # match in list order could report a loose/less-severe threshold (e.g.
+        # PHP 7.2.5 matching the "< 8.3.4 HIGH" rule) while skipping the
+        # tighter, more specific, more severe one ("< 7.4.0 CRITICAL" — it's
+        # actually EOL). Sort ascending by threshold and take the *tightest*
+        # bound the detected version still falls under — that's the most
+        # specific, and therefore most severe, applicable classification.
+        matching = [v for v in vulns if _is_version_below(tech['version'], v['below'])]
+        if matching:
+            vuln = min(matching, key=lambda v: pkg_version.parse(v['below']))
+            findings.append({
+                'title': f'Vulnerable {tech["name"]} {tech["version"]}',
+                'severity': vuln['severity'],
+                'category': 'technology',
+                'description': (
+                    f'{tech["name"]} version {tech["version"]} is vulnerable. '
+                    f'{vuln["description"]} '
+                    f'(Affects versions below {vuln["below"]})'
+                ),
+                'recommendation': (
+                    f'Update {tech["name"]} to version {vuln["below"]} or later. '
+                    f'CVEs: {vuln["cves"]}.'
+                ),
+                'evidence': (
+                    f'Detected: {tech["name"]} {tech["version"]}, '
+                    f'vulnerable below {vuln["below"]}'
+                ),
+            })

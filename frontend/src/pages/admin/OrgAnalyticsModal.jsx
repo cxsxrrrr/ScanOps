@@ -158,14 +158,14 @@ export function OrgAnalyticsModal({ orgId, open, onOpenChange }) {
                                     <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                                         {data.users.length === 0 ? <p className="text-xs text-muted-foreground">Sin usuarios</p> : null}
                                         {data.users.map(user => (
-                                            <div key={user.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg text-sm border">
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">{user.email}</span>
+                                            <div key={user.id} className="flex justify-between items-center gap-2 p-3 bg-muted/30 rounded-lg text-sm border">
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <span className="font-medium truncate" title={user.email}>{user.email}</span>
                                                     <span className="text-[10px] text-muted-foreground">
                                                         Último login: {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Desconocido'}
                                                     </span>
                                                 </div>
-                                                <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
+                                                <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'} className="flex-shrink-0">
                                                     {user.role}
                                                 </Badge>
                                             </div>

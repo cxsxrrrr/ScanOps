@@ -31,6 +31,7 @@ from .lfi_probing import LFI_CHECKS
 from .idor_detection import IDOR_CHECKS
 from .rate_limit import RATE_LIMIT_CHECKS
 from .reflected_xss import REFLECTED_XSS_CHECKS
+from .headers_extra import HEADERS_EXTRA_CHECKS
 
 ALL_CHECKS = (
     INJECTION_CHECKS
@@ -60,4 +61,5 @@ ALL_CHECKS = (
     + IDOR_CHECKS
     + RATE_LIMIT_CHECKS
     + REFLECTED_XSS_CHECKS
+    + HEADERS_EXTRA_CHECKS
 )

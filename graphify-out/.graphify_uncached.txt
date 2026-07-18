@@ -1,0 +1,8 @@
+C:\Users\SamuelRo\Documents\GitHub\Vigia\README.md
+C:\Users\SamuelRo\Documents\GitHub\Vigia\backend\requirements.txt
+C:\Users\SamuelRo\Documents\GitHub\Vigia\frontend\.claude\skills\frontend-design\SKILLS.md
+C:\Users\SamuelRo\Documents\GitHub\Vigia\frontend\docs\changes\2026-05-25-bugfixes.md
+C:\Users\SamuelRo\Documents\GitHub\Vigia\frontend\docs\changes\2026-05-25-redesign.md
+C:\Users\SamuelRo\Documents\GitHub\Vigia\frontend\index.html
+C:\Users\SamuelRo\Documents\GitHub\Vigia\backend\reports\static\logo_vigia.png
+C:\Users\SamuelRo\Documents\GitHub\Vigia\backend\reports\static\logo_vigia_rgba.png

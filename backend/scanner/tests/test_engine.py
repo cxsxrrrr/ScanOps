@@ -45,27 +45,34 @@ class FakeCookie:
 
 
 def _patch_engine_session(engine, fake_response):
-    """Patch the Session.get on a ScanEngine instance."""
-    engine._session.get = MagicMock(return_value=fake_response)
+    """Patch the Session's HTTP verbs on a ScanEngine instance.
+
+    Mocks get/options/request so active_probes.check_http_methods (which
+    needs non-GET verbs) can't slip through to a real network call.
+    """
+    mock = MagicMock(return_value=fake_response)
+    engine._session.get = mock
+    engine._session.options = mock
+    engine._session.request = mock
 
 
 class ScanEngineSecurityHeadersTest(TestCase):
     """Tests for HTTP security header checks."""
 
     def test_missing_all_security_headers(self):
-        """All headers missing → should produce 7 core header findings."""
+        """All headers missing → should produce 9 findings (7 base + COOP/CORP)."""
         engine = ScanEngine('http://example.com')
         _patch_engine_session(engine, FakeResponse(headers={}, cookies=[]))
 
-        with patch.object(engine, '_check_dns_records'):
-            with patch.object(engine, '_run_extended_checks'):
-                with patch.object(engine, '_crawl_and_check'):
-                    with patch.object(engine, '_discover_and_scan_subdomains'):
-                        with patch.object(engine, '_check_cookie_security'):
-                            findings = engine.run()
+        with patch.object(engine, '_check_dns_records'), \
+             patch.object(engine, '_check_zone_transfer'), \
+             patch.object(engine, '_crawl_and_check'), \
+             patch.object(engine, '_discover_and_scan_subdomains'), \
+             patch.object(engine, '_check_cookie_security'):
+            findings = engine.run()
 
         header_findings = [f for f in findings if f['category'] == 'headers']
-        self.assertEqual(len(header_findings), 7)
+        self.assertEqual(len(header_findings), 9)
         titles = [f['title'] for f in header_findings]
         self.assertIn('Missing Strict-Transport-Security Header', titles)
         self.assertIn('Missing Content-Security-Policy Header', titles)
@@ -74,6 +81,8 @@ class ScanEngineSecurityHeadersTest(TestCase):
         self.assertIn('Missing X-XSS-Protection Header', titles)
         self.assertIn('Missing Referrer-Policy Header', titles)
         self.assertIn('Missing Permissions-Policy Header', titles)
+        self.assertIn('Missing Cross-Origin-Opener-Policy Header', titles)
+        self.assertIn('Missing Cross-Origin-Resource-Policy Header', titles)
 
     def test_all_security_headers_present(self):
         """All headers present → 0 core header findings."""
@@ -85,16 +94,18 @@ class ScanEngineSecurityHeadersTest(TestCase):
             'X-XSS-Protection': '1; mode=block',
             'Referrer-Policy': 'strict-origin-when-cross-origin',
             'Permissions-Policy': 'camera=()',
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Resource-Policy': 'same-origin',
         }
         engine = ScanEngine('http://example.com')
         _patch_engine_session(engine, FakeResponse(headers=headers, cookies=[]))
 
-        with patch.object(engine, '_check_dns_records'):
-            with patch.object(engine, '_run_extended_checks'):
-                with patch.object(engine, '_crawl_and_check'):
-                    with patch.object(engine, '_discover_and_scan_subdomains'):
-                        with patch.object(engine, '_check_cookie_security'):
-                            findings = engine.run()
+        with patch.object(engine, '_check_dns_records'), \
+             patch.object(engine, '_check_zone_transfer'), \
+             patch.object(engine, '_crawl_and_check'), \
+             patch.object(engine, '_discover_and_scan_subdomains'), \
+             patch.object(engine, '_check_cookie_security'):
+            findings = engine.run()
 
         header_findings = [f for f in findings if f['category'] == 'headers']
         self.assertEqual(len(header_findings), 0)
@@ -104,7 +115,7 @@ class ScanEngineSecurityHeadersTest(TestCase):
         engine = ScanEngine('http://example.com')
         _patch_engine_session(engine, FakeResponse(headers={}, cookies=[]))
 
-        with patch.object(engine, '_check_dns_records'):
+        with patch.object(engine, '_check_dns_records'), patch.object(engine, '_check_zone_transfer'):
             findings = engine.run()
 
         hsts = next(f for f in findings if 'Strict-Transport-Security' in f['title'])
@@ -115,7 +126,7 @@ class ScanEngineSecurityHeadersTest(TestCase):
         engine = ScanEngine('http://example.com')
         _patch_engine_session(engine, FakeResponse(headers={}, cookies=[]))
 
-        with patch.object(engine, '_check_dns_records'):
+        with patch.object(engine, '_check_dns_records'), patch.object(engine, '_check_zone_transfer'):
             findings = engine.run()
 
         csp = next(f for f in findings if 'Content-Security-Policy' in f['title'])
@@ -131,14 +142,15 @@ class ScanEngineCookieTest(TestCase):
         engine = ScanEngine('http://example.com')
         _patch_engine_session(engine, FakeResponse(headers={}, cookies=[cookie]))
 
-        with patch.object(engine, '_check_dns_records'):
-            with patch.object(engine, '_run_extended_checks'):
-                with patch.object(engine, '_crawl_and_check'):
-                    with patch.object(engine, '_discover_and_scan_subdomains'):
-                        with patch.object(engine, '_check_security_headers'):
-                            with patch.object(engine, '_check_info_disclosure'):
-                                with patch.object(engine, '_check_mixed_content'):
-                                    findings = engine.run()
+        with patch.object(engine, '_check_dns_records'), \
+             patch.object(engine, '_check_zone_transfer'), \
+             patch.object(engine, '_run_extended_checks'), \
+             patch.object(engine, '_crawl_and_check'), \
+             patch.object(engine, '_discover_and_scan_subdomains'), \
+             patch.object(engine, '_check_security_headers'), \
+             patch.object(engine, '_check_info_disclosure'), \
+             patch.object(engine, '_check_mixed_content'):
+            findings = engine.run()
 
         cookie_findings = [f for f in findings if f['category'] == 'cookies']
         self.assertTrue(len(cookie_findings) >= 1)
@@ -150,14 +162,15 @@ class ScanEngineCookieTest(TestCase):
         engine = ScanEngine('http://example.com')
         _patch_engine_session(engine, FakeResponse(headers={}, cookies=[cookie]))
 
-        with patch.object(engine, '_check_dns_records'):
-            with patch.object(engine, '_run_extended_checks'):
-                with patch.object(engine, '_crawl_and_check'):
-                    with patch.object(engine, '_discover_and_scan_subdomains'):
-                        with patch.object(engine, '_check_security_headers'):
-                            with patch.object(engine, '_check_info_disclosure'):
-                                with patch.object(engine, '_check_mixed_content'):
-                                    findings = engine.run()
+        with patch.object(engine, '_check_dns_records'), \
+             patch.object(engine, '_check_zone_transfer'), \
+             patch.object(engine, '_run_extended_checks'), \
+             patch.object(engine, '_crawl_and_check'), \
+             patch.object(engine, '_discover_and_scan_subdomains'), \
+             patch.object(engine, '_check_security_headers'), \
+             patch.object(engine, '_check_info_disclosure'), \
+             patch.object(engine, '_check_mixed_content'):
+            findings = engine.run()
 
         cookie_findings = [f for f in findings if f['category'] == 'cookies']
         self.assertEqual(len(cookie_findings), 0)
@@ -174,7 +187,7 @@ class ScanEngineInfoDisclosureTest(TestCase):
             cookies=[],
         ))
 
-        with patch.object(engine, '_check_dns_records'):
+        with patch.object(engine, '_check_dns_records'), patch.object(engine, '_check_zone_transfer'):
             findings = engine.run()
 
         info_findings = [f for f in findings if f['category'] == 'info_disclosure']
@@ -188,7 +201,7 @@ class ScanEngineInfoDisclosureTest(TestCase):
             cookies=[],
         ))
 
-        with patch.object(engine, '_check_dns_records'):
+        with patch.object(engine, '_check_dns_records'), patch.object(engine, '_check_zone_transfer'):
             findings = engine.run()
 
         info_findings = [f for f in findings if f['category'] == 'info_disclosure']
@@ -208,7 +221,7 @@ class ScanEngineMixedContentTest(TestCase):
         ))
 
         with patch.object(engine, '_check_ssl'):
-            with patch.object(engine, '_check_dns_records'):
+            with patch.object(engine, '_check_dns_records'), patch.object(engine, '_check_zone_transfer'):
                 findings = engine.run()
 
         mixed = [f for f in findings if f['category'] == 'mixed_content']
@@ -224,7 +237,7 @@ class ScanEngineMixedContentTest(TestCase):
             text='<img src="http://example.com/image.png">',
         ))
 
-        with patch.object(engine, '_check_dns_records'):
+        with patch.object(engine, '_check_dns_records'), patch.object(engine, '_check_zone_transfer'):
             findings = engine.run()
 
         mixed = [f for f in findings if f['category'] == 'mixed_content']

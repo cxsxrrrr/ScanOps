@@ -1,5 +1,6 @@
 """Celery tasks for notifications."""
 import logging
+from html import escape as _esc
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
@@ -30,39 +31,61 @@ def _build_email_wrapper(subject, body_html):
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="dark light" />
 <title>{subject}</title>
 <style>
-  body {{ margin: 0; padding: 0; background-color: {VIGIA_BRANDING['bg_color']}; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
-  .container {{ max-width: 600px; margin: 0 auto; padding: 32px 24px; }}
-  .card {{ background-color: {VIGIA_BRANDING['card_bg']}; border: 1px solid {VIGIA_BRANDING['border_color']}; border-radius: 16px; padding: 32px; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; padding: 0; background-color: {VIGIA_BRANDING['bg_color']}; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: 100%; }}
+  .container {{ max-width: 600px; width: 100%; margin: 0 auto; padding: 32px 24px; }}
+  .card {{ background-color: {VIGIA_BRANDING['card_bg']}; border: 1px solid {VIGIA_BRANDING['border_color']}; border-radius: 16px; padding: 32px; overflow: hidden; }}
   .header {{ text-align: center; margin-bottom: 32px; }}
-  .header h1 {{ margin: 0; font-size: 24px; font-weight: 700; }}
+  .header h1 {{ margin: 0; font-size: 24px; font-weight: 700; color: #ffffff; }}
   .header .logo {{ width: 40px; height: 40px; margin-bottom: 12px; }}
-  .gradient-text {{ background: linear-gradient(135deg, {VIGIA_BRANDING['primary_color']}, {VIGIA_BRANDING['accent_color']}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }}
-  .btn {{ display: inline-block; background: linear-gradient(135deg, {VIGIA_BRANDING['primary_color']}, {VIGIA_BRANDING['accent_color']}); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 12px; font-weight: 600; font-size: 14px; }}
-  .btn:hover {{ opacity: 0.9; }}
-  .footer {{ text-align: center; margin-top: 32px; color: {VIGIA_BRANDING['text_muted']}; font-size: 12px; }}
+  /* Solid colors, not background-clip:text gradients or gradient-only backgrounds —
+     most email clients (Gmail Android app included) don't render those and leave
+     text/buttons invisible. Solid color is the reliable choice for email HTML. */
+  .btn {{ display: inline-block; background-color: {VIGIA_BRANDING['primary_color']}; color: #ffffff !important; text-decoration: none; padding: 12px 32px; border-radius: 12px; font-weight: 600; font-size: 14px; max-width: 100%; }}
+  .footer {{ text-align: center; margin-top: 32px; color: {VIGIA_BRANDING['text_muted']}; font-size: 12px; padding: 0 16px; }}
   .footer a {{ color: {VIGIA_BRANDING['primary_color']}; text-decoration: none; }}
-  table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-  th {{ background-color: rgba(42, 136, 255, 0.1); color: {VIGIA_BRANDING['primary_color']}; padding: 10px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid {VIGIA_BRANDING['border_color']}; }}
-  td {{ padding: 10px 16px; font-size: 14px; color: {VIGIA_BRANDING['text_color']}; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }}
+  table {{ width: 100%; max-width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed; }}
+  /* Give the 3rd column (description/findings — the long one) most of the
+     width instead of table-layout:fixed's default equal thirds. */
+  th:nth-child(1), td:nth-child(1) {{ width: 18%; }}
+  th:nth-child(2), td:nth-child(2) {{ width: 27%; }}
+  th:nth-child(3), td:nth-child(3) {{ width: 55%; }}
+  th {{ background-color: rgba(42, 136, 255, 0.1); color: {VIGIA_BRANDING['primary_color']}; padding: 10px 12px; text-align: left; font-size: 13px; border-bottom: 1px solid {VIGIA_BRANDING['border_color']}; word-break: break-word; }}
+  td {{ padding: 10px 12px; font-size: 14px; color: {VIGIA_BRANDING['text_color']}; border-bottom: 1px solid rgba(51, 65, 85, 0.5); word-break: break-word; overflow-wrap: break-word; }}
   tr:last-child td {{ border-bottom: none; }}
-  .severity-badge {{ display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; }}
+  .severity-badge {{ display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; white-space: nowrap; }}
   .severity-high {{ background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }}
   .severity-medium {{ background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }}
   .severity-low {{ background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }}
   .status-ok {{ color: {VIGIA_BRANDING['success_color']}; }}
   .status-warning {{ color: {VIGIA_BRANDING['warning_color']}; }}
   .status-error {{ color: {VIGIA_BRANDING['danger_color']}; }}
-  p {{ color: {VIGIA_BRANDING['text_color']}; font-size: 14px; line-height: 1.6; }}
+  p {{ color: {VIGIA_BRANDING['text_color']}; font-size: 14px; line-height: 1.6; word-break: break-word; overflow-wrap: break-word; }}
   .muted {{ color: {VIGIA_BRANDING['text_muted']}; }}
+  a {{ word-break: break-word; overflow-wrap: break-word; }}
+  @media only screen and (max-width: 480px) {{
+    .container {{ padding: 16px 8px; }}
+    .card {{ padding: 20px 16px; border-radius: 12px; }}
+    .header h1 {{ font-size: 20px; }}
+    table, thead, tbody, th, td, tr {{ display: block; width: 100%; }}
+    thead {{ display: none; }}
+    table {{ margin: 16px 0; }}
+    tr {{ border-bottom: 1px solid {VIGIA_BRANDING['border_color']}; padding: 10px 0; }}
+    tr:last-child {{ border-bottom: none; }}
+    td {{ border-bottom: none; padding: 4px 0; }}
+    td:before {{ content: attr(data-label); display: block; font-size: 11px; font-weight: 700; color: {VIGIA_BRANDING['primary_color']}; margin-bottom: 2px; }}
+    .btn {{ display: block; width: 100%; padding: 14px 16px; }}
+  }}
 </style>
 </head>
 <body>
 <div class="container">
   <div class="card">
     <div class="header">
-      <h1><span class="gradient-text">Vigia</span></h1>
+      <h1>Vigia</h1>
     </div>
     {body_html}
     <div style="text-align: center; margin-top: 28px;">
@@ -291,9 +314,9 @@ def _send_report_email(organization):
         findings_text = f"{ud['total_findings']} hallazgos" if ud['total_findings'] > 0 else "Sin hallazgos"
         rows_html += f"""
         <tr>
-          <td>{ud['url']}</td>
-          <td><span class="{status_class}">{ud['status']}</span></td>
-          <td>{findings_text}</td>
+          <td data-label="URL">{_esc(ud['url'])}</td>
+          <td data-label="Estado"><span class="{status_class}">{_esc(ud['status'])}</span></td>
+          <td data-label="Hallazgos">{_esc(findings_text)}</td>
         </tr>"""
 
     body = f"""
@@ -335,18 +358,19 @@ def _send_alert_email(organization, scan, high_findings):
     findings_html = ""
     for f in high_findings[:10]:
         severity_class = "severity-high" if f.severity == 'HIGH' else "severity-medium"
+        desc = f.description[:120] + ('...' if len(f.description) > 120 else '')
         findings_html += f"""
         <tr>
-          <td><span class="severity-badge {severity_class}">{f.severity}</span></td>
-          <td>{f.title}</td>
-          <td class="muted" style="font-size: 13px;">{f.description[:120]}{'...' if len(f.description) > 120 else ''}</td>
+          <td data-label="Severidad"><span class="severity-badge {severity_class}">{_esc(f.severity)}</span></td>
+          <td data-label="Título">{_esc(f.title)}</td>
+          <td data-label="Descripción" class="muted" style="font-size: 13px;">{_esc(desc)}</td>
         </tr>"""
 
     remaining = len(high_findings) - 10 if len(high_findings) > 10 else 0
 
     body = f"""
     <h2 style="color: {VIGIA_BRANDING['danger_color']}; margin-top: 0;">⚠️ Alerta de Seguridad</h2>
-    <p>Se detectaron <strong>{len(high_findings)}</strong> vulnerabilidades de severidad alta en <strong>{scan.url_asset.url}</strong>.</p>
+    <p>Se detectaron <strong>{len(high_findings)}</strong> vulnerabilidades de severidad alta en <strong>{_esc(scan.url_asset.url)}</strong>.</p>
     <table>
       <thead>
         <tr>

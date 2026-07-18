@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, Navigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../lib/api'
@@ -7,7 +7,7 @@ import { useTheme } from '../hooks/useTheme'
 import {
     LayoutDashboard, Globe, ScanSearch, Settings,
     ShieldCheck, Menu, X, ChevronLeft, User, Sparkles,
-    Crown, Zap, Shield, ScrollText, Sun, Moon,
+    Crown, Zap, Shield, ScrollText, Sun, Moon, LifeBuoy,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import PageTransition from '../components/PageTransition'
@@ -45,6 +45,11 @@ const NAV_ITEMS = [
         activeBg: 'linear-gradient(135deg,#475569,#64748b)', glow: '0 4px 20px rgba(100,116,139,0.35)',
     },
     {
+        to: '/support', icon: LifeBuoy, label: 'Soporte',
+        iconColor: '#34d399', hoverBg: 'rgba(16,185,129,0.12)',
+        activeBg: 'linear-gradient(135deg,#059669,#10b981)', glow: '0 4px 20px rgba(16,185,129,0.45)',
+    },
+    {
         to: '/admin', icon: ShieldCheck, label: 'Admin', adminOnly: true,
         iconColor: '#f87171', hoverBg: 'rgba(239,68,68,0.12)',
         activeBg: 'linear-gradient(135deg,#dc2626,#ef4444)', glow: '0 4px 20px rgba(239,68,68,0.45)',
@@ -58,6 +63,7 @@ const pageNames = {
     '/plans':    'Planes',
     '/profile':  'Mi Perfil',
     '/settings': 'Configuración',
+    '/support':  'Soporte',
     '/admin':    'Panel de Administración',
 }
 
@@ -123,21 +129,12 @@ function NavItem({ item, collapsed, onClick, isDark }) {
 
 export default function DashboardLayout() {
     const { user }   = useUser()
-    const navigate   = useNavigate()
     const location                = useLocation()
     const { isDark, toggleTheme } = useTheme()
     const [collapsed,  setCollapsed]  = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [profile,    setProfile]    = useState(null)
     const [profileLoading, setProfileLoading] = useState(true)
-
-    useEffect(() => {
-        const pendingInvite = sessionStorage.getItem('pendingInvite')
-        if (pendingInvite) {
-            sessionStorage.removeItem('pendingInvite')
-            navigate(`/invite/${pendingInvite}`)
-        }
-    }, [navigate])
 
     useEffect(() => {
         let cancelled = false
@@ -171,6 +168,18 @@ export default function DashboardLayout() {
         loadProfile()
         return () => { cancelled = true }
     }, [])
+
+    // Redirect synchronously (before Outlet mounts) rather than from an
+    // effect — an effect-based navigate() still lets the index route's
+    // child (Dashboard) mount and fire its own data-loading effect first,
+    // which calls GET /auth/organization/ and silently auto-creates an org
+    // for the brand-new user. That org then blocks the invite they were
+    // trying to accept ("ya perteneces a otra organizacion").
+    const pendingInvite = sessionStorage.getItem('pendingInvite')
+    if (pendingInvite && location.pathname !== `/invite/${pendingInvite}`) {
+        sessionStorage.removeItem('pendingInvite')
+        return <Navigate to={`/invite/${pendingInvite}`} replace />
+    }
 
     const currentPageName  = pageNames[location.pathname] || 'Reporte'
     const isAdmin          = profile?.role === 'admin'
@@ -228,7 +237,7 @@ export default function DashboardLayout() {
                     )}
 
                     {/* ── Logo ── */}
-                    <div className="relative flex items-center justify-between px-4 h-16"
+                    <div className={`relative flex items-center ${collapsed ? 'flex-col justify-center gap-2 py-3' : 'justify-between px-4 h-16'}`}
                         style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid hsl(220 13% 88%)' }}
                     >
                         <AnimatePresence mode="wait">
@@ -258,7 +267,7 @@ export default function DashboardLayout() {
                             )}
                         </AnimatePresence>
                         {collapsed && (
-                            <div className="mx-auto relative">
+                            <div className="relative">
                                 <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                                     style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', boxShadow: '0 4px 16px rgba(37,99,235,0.5)' }}
                                 >
@@ -267,7 +276,7 @@ export default function DashboardLayout() {
                                 <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 animate-pulse" style={{ borderColor: isDark ? '#07101f' : '#f8fafc' }} />
                             </div>
                         )}
-                        <div className="flex items-center gap-1">
+                        <div className={`flex items-center ${collapsed ? '' : 'gap-1'}`}>
                             <button
                                 onClick={() => { setCollapsed(!collapsed); setMobileOpen(false) }}
                                 className="hidden lg:flex p-1.5 rounded-lg transition-colors flex-shrink-0"

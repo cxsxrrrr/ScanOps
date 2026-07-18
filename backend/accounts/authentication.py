@@ -184,6 +184,12 @@ class ClerkJWTAuthentication(authentication.BaseAuthentication):
                 user.save(update_fields=['email'])
                 logger.info(f"Updated email for user {clerk_user_id}: {api_email}")
 
+        if not user.is_active:
+            raise exceptions.AuthenticationFailed(
+                'Tu cuenta ha sido suspendida. Contacta al administrador.'
+            )
+
+
         return (user, payload)
 
     def authenticate_header(self, request):

@@ -61,13 +61,24 @@ class AccountsViewsTest(TestCase):
         self.assertEqual(response.data['name'], 'PYME Test')
 
     def test_update_organization(self):
-        """PATCH /api/auth/organization/ → updates name."""
+        """PATCH /api/auth/organization/ → updates name (org_admin only)."""
+        self.user.role = 'org_admin'
+        self.user.save(update_fields=['role'])
         response = self.client.patch('/api/auth/organization/', {
             'name': 'Updated PYME',
         })
         self.assertEqual(response.status_code, 200)
         self.org.refresh_from_db()
         self.assertEqual(self.org.name, 'Updated PYME')
+
+    def test_update_organization_requires_org_admin(self):
+        """PATCH /api/auth/organization/ name → 403 for a plain member."""
+        response = self.client.patch('/api/auth/organization/', {
+            'name': 'Hacked Name',
+        })
+        self.assertEqual(response.status_code, 403)
+        self.org.refresh_from_db()
+        self.assertEqual(self.org.name, 'PYME Test')
 
     def test_create_organization_for_user_without_one(self):
         """PATCH /api/auth/organization/ without org → creates one."""
@@ -85,12 +96,19 @@ class AccountsViewsTest(TestCase):
         self.assertIsNotNone(user_no_org.organization)
         self.assertEqual(user_no_org.organization.name, 'New Org')
 
-    def test_organization_requires_name(self):
-        """PATCH /api/auth/organization/ without name → 400."""
+    def test_organization_auto_created_without_name(self):
+        """PATCH /api/auth/organization/ without name still auto-creates one
+        (fallback name from the user's email) — intentional lazy-creation
+        design so checkout/URL registration never 404s on a brand-new user.
+        """
         user_no_org = User.objects.create_user(
             username='noorg2',
             email='noorg2@test.com',
         )
         self.client.force_authenticate(user=user_no_org)
         response = self.client.patch('/api/auth/organization/', {})
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 201)
+        user_no_org.refresh_from_db()
+        self.assertIsNotNone(user_no_org.organization)
+        # Founding member of a brand-new org is auto-promoted to org_admin.
+        self.assertEqual(user_no_org.role, 'org_admin')

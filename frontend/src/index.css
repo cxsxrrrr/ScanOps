@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     /* Light mode — clean SaaS minimal (Linear / Notion style) */
     --background: 220 16% 95%;        /* cool off-white — cards float above this */
     --foreground: 220 43% 11%;        /* near-black — max heading contrast */
@@ -40,6 +41,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     /* Dark mode — deep navy, refined glassmorphism */
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;
@@ -91,6 +93,34 @@
   button:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+  /* Native date/month inputs — adapt picker to theme.
+     "color-scheme: light dark" lets the *OS* decide which icon variant to
+     paint, independent of our app's manual .dark toggle — when the OS is
+     in light mode but the app is toggled to dark, that renders the black
+     (light-scheme) calendar icon on a dark input, i.e. invisible. Force it
+     to follow the app's own theme class instead of the OS preference. */
+  input[type="date"],
+  input[type="month"] {
+    accent-color: hsl(var(--primary));
+    color-scheme: light;
+  }
+  .dark input[type="date"],
+  .dark input[type="month"] {
+    color-scheme: dark;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.75;
+    padding: 4px;
+    border-radius: 6px;
+    transition: opacity 0.15s, background-color 0.15s;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="month"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    background-color: hsl(var(--primary) / 0.15);
   }
 }
 
@@ -153,8 +183,9 @@
   .plan-badge-ultimate { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold; }
 
   /* ─── Role badges ────────────────────────────────────────────── */
-  .role-badge-admin { @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-xs font-semibold; }
-  .role-badge-user  { @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 text-xs font-semibold; }
+  .role-badge-admin     { @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-xs font-semibold; }
+  .role-badge-org_admin { @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-semibold; }
+  .role-badge-user      { @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 text-xs font-semibold; }
 
   /* ─── Severity badges ────────────────────────────────────────── */
   .severity-critical { @apply bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-500/25; }
