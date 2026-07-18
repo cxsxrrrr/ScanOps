@@ -1,7 +1,11 @@
 """Admin panel views for system administration."""
+from collections import Counter
+from datetime import timedelta
+from io import BytesIO
+
 from django.db.models import Q
 from django.utils import timezone
-from datetime import timedelta
+from django.http import HttpResponse
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -11,6 +15,32 @@ from accounts.serializers import OrganizationSerializer
 from scanner.models import Scan, Finding
 from notifications.models import EmailLog
 from audit_log.models import APIRequestLog, AdminActionLog
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+
+from reports.views import (
+    _setup_sheet_header,
+    _finalize_table_sheet,
+    LOGO_AVAILABLE,
+    LOGO_PATH,
+    REPORTLAB_AVAILABLE,
+)
+
+from .utils import get_server_public_ip, get_geo_info, get_target_ip
+
+
+try:
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import (
+        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, Image as RLImage,
+    )
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 
 class IsAdminUser(permissions.BasePermission):
@@ -488,3 +518,482 @@ def admin_action_log_list(request):
         'page_size': page_size,
         'results': list(results),
     })
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def cyber_map_data(request):
+    """Returns recent scans with source and destination IP geolocations."""
+    days = request.query_params.get('days', 'general')
+    scans_qs = Scan.objects.select_related('created_by', 'url_asset').order_by('-started_at')
+
+    if days == '1':
+        scans_qs = scans_qs.filter(started_at__gte=timezone.now() - timedelta(days=1))
+    elif days == '7':
+        scans_qs = scans_qs.filter(started_at__gte=timezone.now() - timedelta(days=7))
+    elif days == '30':
+        scans_qs = scans_qs.filter(started_at__gte=timezone.now() - timedelta(days=30))
+
+    recent_scans = scans_qs[:100]
+    server_public_ip = get_server_public_ip()
+
+    data = []
+    for scan in recent_scans:
+        origin_log = APIRequestLog.objects.filter(
+            user=scan.created_by
+        ).order_by('-created_at').first()
+
+        origin_ip = origin_log.ip_address if origin_log else server_public_ip
+        real_origin_ip = server_public_ip if origin_ip in ('127.0.0.1', 'localhost', '0.0.0.0', '::1') else origin_ip
+        target_url = scan.url_asset.url
+        target_ip = get_target_ip(target_url)
+
+        data.append({
+            'id': scan.id,
+            'user': scan.created_by.email if scan.created_by else 'Sistema',
+            'origin_ip': real_origin_ip,
+            'origin_geo': get_geo_info(real_origin_ip, server_public_ip),
+            'target_url': target_url,
+            'target_ip': target_ip,
+            'target_geo': get_geo_info(target_ip, server_public_ip),
+            'status': scan.status,
+            'timestamp': scan.started_at,
+        })
+
+    return Response(data)
+
+
+# ----------------------------------------------------------------------
+# Admin global report (origin/audited countries, top users, top routes)
+# ----------------------------------------------------------------------
+
+def _get_scans_for_report(days='general', limit=200):
+    """Return recent scans filtered by the same 'days' param used by cyber-map."""
+    scans_qs = Scan.objects.select_related('created_by', 'url_asset').order_by('-started_at')
+
+    if days == '1':
+        scans_qs = scans_qs.filter(started_at__gte=timezone.now() - timedelta(days=1))
+    elif days == '7':
+        scans_qs = scans_qs.filter(started_at__gte=timezone.now() - timedelta(days=7))
+    elif days == '30':
+        scans_qs = scans_qs.filter(started_at__gte=timezone.now() - timedelta(days=30))
+
+    return list(scans_qs[:limit])
+
+
+def _collect_admin_report_data(days='general'):
+    """Aggregate data for the admin global report."""
+    scans = _get_scans_for_report(days)
+    server_public_ip = get_server_public_ip()
+
+    status_counts = Counter()
+    user_counts = Counter()
+    target_counts = Counter()
+    origin_country_counts = Counter()
+    target_country_counts = Counter()
+
+    for scan in scans:
+        status_counts[scan.status] += 1
+
+        user_email = scan.created_by.email if scan.created_by else 'Sistema'
+        user_counts[user_email] += 1
+
+        target_url = scan.url_asset.url if scan.url_asset else 'N/A'
+        target_counts[target_url] += 1
+
+        # Origin country from the user's most recent APIRequestLog
+        origin_log = APIRequestLog.objects.filter(
+            user=scan.created_by
+        ).order_by('-created_at').first()
+        origin_ip = origin_log.ip_address if origin_log else server_public_ip
+        real_origin_ip = server_public_ip if origin_ip in ('127.0.0.1', 'localhost', '0.0.0.0', '::1') else origin_ip
+        origin_geo = get_geo_info(real_origin_ip, server_public_ip)
+        origin_country_counts[origin_geo.get('country', 'Desconocido')] += 1
+
+        # Target country from DNS resolution of the scanned URL
+        target_ip = get_target_ip(target_url)
+        target_geo = get_geo_info(target_ip, server_public_ip)
+        target_country_counts[target_geo.get('country', 'Desconocido')] += 1
+
+    return {
+        'period': days,
+        'generated_at': timezone.now(),
+        'total_scans': len(scans),
+        'status_counts': dict(status_counts),
+        'top_origin_countries': [
+            {'country': country, 'count': count}
+            for country, count in origin_country_counts.most_common(10)
+        ],
+        'top_target_countries': [
+            {'country': country, 'count': count}
+            for country, count in target_country_counts.most_common(10)
+        ],
+        'top_users': [
+            {'user': user, 'count': count}
+            for user, count in user_counts.most_common(10)
+        ],
+        'top_targets': [
+            {'url': url, 'count': count}
+            for url, count in target_counts.most_common(10)
+        ],
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_report_summary(request):
+    """Return aggregated admin report data as JSON."""
+    days = request.query_params.get('days', 'general')
+    data = _collect_admin_report_data(days)
+    data['generated_at'] = data['generated_at'].isoformat()
+    return Response(data)
+
+
+def _build_admin_excel(data, days):
+    """Build an Excel workbook for the admin global report."""
+    wb = Workbook()
+
+    header_font = Font(name='Calibri', size=11, bold=True, color='FFFFFFFF')
+    header_fill = PatternFill(start_color='FF1E293B', end_color='FF1E293B', fill_type='solid')
+    thin_side = Side(border_style='thin', color='FFCBD5E1')
+    border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    cell_align = Alignment(wrap_text=True, vertical='top')
+
+    period_label = {
+        'general': 'Todos los tiempos (últimos 200 escaneos)',
+        '1': 'Últimas 24 horas',
+        '7': 'Últimos 7 días',
+        '30': 'Últimos 30 días',
+    }.get(days, days)
+    generated_str = data['generated_at'].strftime('%d/%m/%Y %H:%M')
+    subtitle = f'Período: {period_label} · Generado: {generated_str}'
+
+    def _auto_width(ws, skip_rows=0):
+        for col in ws.columns:
+            max_len = 0
+            for cell in col:
+                if cell.row <= skip_rows:
+                    continue
+                if cell.value is not None:
+                    cell.border = border
+                    cell.alignment = cell_align
+                    max_len = max(max_len, len(str(cell.value)))
+            ws.column_dimensions[get_column_letter(col[0].column)].width = min(max_len + 2, 60)
+
+    def _add_table(ws, title, headers, rows, tab_color):
+        _setup_sheet_header(ws, title, subtitle, col_span=len(headers))
+        header_row = ws.max_row + 1
+        ws.append(headers)
+        for cell in ws[header_row]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        for row in rows:
+            ws.append(row)
+        _auto_width(ws, skip_rows=1)
+        _finalize_table_sheet(ws, header_row, tab_color=tab_color, zebra=True)
+
+    # Sheet 1: Resumen
+    ws1 = wb.active
+    ws1.title = 'Resumen'
+    _setup_sheet_header(ws1, 'Reporte Global de Auditoría', subtitle, col_span=2)
+    header_row = ws1.max_row + 1
+    ws1.append(['Campo', 'Valor'])
+    for cell in ws1[header_row]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    summary_rows = [
+        ['Período', period_label],
+        ['Total de escaneos', data['total_scans']],
+        ['Completados', data['status_counts'].get('completed', 0)],
+        ['En ejecución', data['status_counts'].get('running', 0)],
+        ['Pendientes', data['status_counts'].get('pending', 0)],
+        ['Con error', data['status_counts'].get('error', 0)],
+    ]
+    for row in summary_rows:
+        ws1.append(row)
+    _auto_width(ws1, skip_rows=1)
+    _finalize_table_sheet(ws1, header_row, tab_color='2563EB', zebra=True)
+
+    # Sheet 2: Países de origen
+    ws2 = wb.create_sheet('Países Origen')
+    _add_table(
+        ws2,
+        'Países de Origen (más peticiones)',
+        ['País', 'Escaneos'],
+        [[item['country'], item['count']] for item in data['top_origin_countries']],
+        '0891B2',
+    )
+
+    # Sheet 3: Países auditados
+    ws3 = wb.create_sheet('Países Auditados')
+    _add_table(
+        ws3,
+        'Países Auditados (más escaneados)',
+        ['País', 'Escaneos'],
+        [[item['country'], item['count']] for item in data['top_target_countries']],
+        '7C3AED',
+    )
+
+    # Sheet 4: Usuarios
+    ws4 = wb.create_sheet('Usuarios')
+    _add_table(
+        ws4,
+        'Usuarios con más peticiones',
+        ['Usuario', 'Escaneos'],
+        [[item['user'], item['count']] for item in data['top_users']],
+        '059669',
+    )
+
+    # Sheet 5: Rutas
+    ws5 = wb.create_sheet('Rutas')
+    _add_table(
+        ws5,
+        'Rutas más auditadas',
+        ['URL', 'Escaneos'],
+        [[item['url'], item['count']] for item in data['top_targets']],
+        'DC2626',
+    )
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def _build_admin_pdf(data, days):
+    """Build a PDF for the admin global report using ReportLab."""
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError('ReportLab no está disponible')
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=LETTER,
+        leftMargin=0.5 * inch,
+        rightMargin=0.5 * inch,
+        topMargin=0.5 * inch,
+        bottomMargin=0.5 * inch,
+        title='Reporte Global de Auditoria',
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'AdminTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=18,
+        textColor=rl_colors.HexColor('#0f172a'),
+        leading=22,
+        spaceAfter=4,
+    )
+    meta_style = ParagraphStyle(
+        'AdminMeta',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        textColor=rl_colors.HexColor('#475569'),
+        leading=12,
+        spaceAfter=12,
+    )
+    section_style = ParagraphStyle(
+        'AdminSection',
+        parent=styles['Heading3'],
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        textColor=rl_colors.HexColor('#0f172a'),
+        spaceBefore=10,
+        spaceAfter=4,
+    )
+    body_style = ParagraphStyle(
+        'AdminBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        leading=11,
+        textColor=rl_colors.HexColor('#1f2937'),
+    )
+    header_style = ParagraphStyle(
+        'AdminTableHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        textColor=rl_colors.white,
+        leading=11,
+    )
+
+    period_label = {
+        'general': 'Todos los tiempos (últimos 200 escaneos)',
+        '1': 'Últimas 24 horas',
+        '7': 'Últimos 7 días',
+        '30': 'Últimos 30 días',
+    }.get(days, days)
+    generated_str = data['generated_at'].strftime('%d/%m/%Y %H:%M')
+
+    story = []
+
+    if LOGO_AVAILABLE:
+        try:
+            img = RLImage(LOGO_PATH, width=160, height=160 * (120 / 420))
+            img.hAlign = 'LEFT'
+            story.append(img)
+            story.append(Spacer(1, 6))
+        except Exception:
+            pass
+
+    story.append(Paragraph('Reporte Global de Auditoría', title_style))
+    story.append(Paragraph(
+        f'Período: {period_label} · Total escaneos: {data["total_scans"]} · Generado: {generated_str}',
+        meta_style,
+    ))
+
+    # Summary stats
+    story.append(Paragraph('Resumen de Estado', section_style))
+    stat_headers = ['Completados', 'En ejecución', 'Pendientes', 'Con error']
+    stat_values = [
+        data['status_counts'].get('completed', 0),
+        data['status_counts'].get('running', 0),
+        data['status_counts'].get('pending', 0),
+        data['status_counts'].get('error', 0),
+    ]
+    stats_data = [
+        [Paragraph(h, header_style) for h in stat_headers],
+        [Paragraph(str(v), body_style) for v in stat_values],
+    ]
+    page_width = 7.5 * inch
+    stats_tbl = Table(stats_data, repeatRows=1, colWidths=[page_width / 4] * 4)
+    stats_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), rl_colors.HexColor('#1e293b')),
+        ('GRID', (0, 0), (-1, -1), 0.5, rl_colors.HexColor('#cbd5e1')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(stats_tbl)
+
+    def _clean(text):
+        return (str(text or '')).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+    def _add_ranking_table(title, headers, items, key_label, key_key, count_key):
+        story.append(Paragraph(title, section_style))
+        rows = [[Paragraph(h, header_style) for h in headers]]
+        for item in items:
+            rows.append([
+                Paragraph(_clean(item[key_label]), body_style),
+                Paragraph(str(item[count_key]), body_style),
+            ])
+        if not items:
+            rows.append([Paragraph('Sin datos', body_style), Paragraph('-', body_style)])
+        col_widths = [page_width - 1.2 * inch, 1.2 * inch]
+        tbl = Table(rows, repeatRows=1, colWidths=col_widths)
+        tbl.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), rl_colors.HexColor('#1e293b')),
+            ('GRID', (0, 0), (-1, -1), 0.3, rl_colors.HexColor('#cbd5e1')),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(tbl)
+        story.append(Spacer(1, 6))
+
+    _add_ranking_table(
+        'Países de Origen',
+        ['País', 'Escaneos'],
+        data['top_origin_countries'],
+        'country',
+        'country',
+        'count',
+    )
+    _add_ranking_table(
+        'Países Auditados',
+        ['País', 'Escaneos'],
+        data['top_target_countries'],
+        'country',
+        'country',
+        'count',
+    )
+    _add_ranking_table(
+        'Usuarios con más peticiones',
+        ['Usuario', 'Escaneos'],
+        data['top_users'],
+        'user',
+        'user',
+        'count',
+    )
+    _add_ranking_table(
+        'Rutas más auditadas',
+        ['URL', 'Escaneos'],
+        data['top_targets'],
+        'url',
+        'url',
+        'count',
+    )
+
+    story.append(Paragraph(
+        'Generado por Auditoría Web Automatizada para PYMES',
+        ParagraphStyle(
+            'AdminFooter',
+            parent=styles['Normal'],
+            alignment=1,
+            fontSize=8,
+            textColor=rl_colors.HexColor('#64748b'),
+        ),
+    ))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_report_export(request):
+    """Download the admin global report as Excel or PDF."""
+    days = request.query_params.get('days', 'general')
+    fmt = (request.query_params.get('format') or 'excel').lower()
+
+    data = _collect_admin_report_data(days)
+
+    safe_period = {'general': 'todos', '1': '24h', '7': '7d', '30': '30d'}.get(days, days)
+    timestamp = data['generated_at'].strftime('%Y%m%d_%H%M')
+
+    if fmt in ('excel', 'xlsx'):
+        buffer = _build_admin_excel(data, days)
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = (
+            f'attachment; filename="reporte_global_{safe_period}_{timestamp}.xlsx"'
+        )
+        return response
+
+    if fmt == 'pdf':
+        if not REPORTLAB_AVAILABLE:
+            return Response(
+                {'detail': 'ReportLab no está disponible para generar PDF.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        try:
+            buffer = _build_admin_pdf(data, days)
+            response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = (
+                f'attachment; filename="reporte_global_{safe_period}_{timestamp}.pdf"'
+            )
+            return response
+        except Exception as exc:
+            return Response(
+                {'detail': f'Error generando PDF: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    return Response(
+        {'detail': 'Formato no soportado. Usa format=excel o format=pdf.'},
+        status=status.HTTP_400_BAD_REQUEST,
+    )

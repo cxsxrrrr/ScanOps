@@ -24,6 +24,7 @@ import { EditUserModal } from './EditUserModal'
 import { OrgAnalyticsModal } from './OrgAnalyticsModal'
 import { AdminSupportPanel } from './AdminSupportPanel'
 import { AdminAuditLogPanel } from './AdminAuditLogPanel'
+import { AdminCyberMap } from './AdminCyberMap'
 
 const planConfig = {
     free:     { icon: Shield,  label: 'Free',     gradient: 'from-gray-500 to-gray-600',    badge: 'plan-badge-free' },
@@ -236,6 +237,9 @@ export default function AdminDashboard() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Mapa Cibernético Global */}
+                    <AdminCyberMap />
                 </TabsContent>
 
                 {/* Intelligence / Analytics */}
